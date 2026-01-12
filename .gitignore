@@ -1,0 +1,18 @@
+/target
+/.temp
+/tests
+/.idea
+/profiles
+.env
+nohup.out
+.direnv
+.flatpak-builder
+build-dir
+cargo-sources.json
+
+
+# Added by cargo
+#
+# already existing elements were commented out
+
+#/target
