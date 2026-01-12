@@ -1,0 +1,64 @@
+import { VerticalBox, HorizontalBox, LineEdit, ScrollView } from "std-widgets.slint";
+
+export struct ActionItem {
+    name: string,
+    description: string,
+}
+
+export component LauncherWindow inherits Window {
+    width: 600px;
+    height: 400px;
+    title: "Swift Launcher";
+    no-frame: true;
+
+    in-out property <string> search-text;
+    in-out property <[ActionItem]> actions;
+
+    callback action-clicked(int);
+    callback linefinished(string);
+
+    VerticalBox {
+        padding: 20px;
+        spacing: 10px;
+        
+        LineEdit {
+            placeholder-text: "Type to search...";
+            text <=> search-text;
+
+            accepted(text) => {
+                root.linefinished(text);
+            }
+        }
+
+        ScrollView {
+            VerticalBox {
+                spacing: 5px;
+                for action[idx] in actions: Rectangle {
+                    height: 60px;
+                    background: #f0f0f0;
+                    border-radius: 8px;
+                    
+                    TouchArea {
+                        clicked => {
+                            root.action-clicked(idx);
+                        }
+                    }
+                    
+                    VerticalBox {
+                        padding: 12px;
+                        Text {
+                            text: action.name;
+                            font-size: 16px;
+                            font-weight: 600;
+                        }
+                        Text {
+                            text: action.description;
+                            font-size: 12px;
+                            color: #666;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
