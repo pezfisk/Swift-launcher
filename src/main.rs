@@ -1,12 +1,23 @@
 slint::include_modules!();
 
+use ini::Ini;
 use slint::{Model, ModelRc, VecModel};
 use std::process::Command;
 use std::rc::Rc;
 
+mod scraper;
+
 fn main() -> Result<(), slint::PlatformError> {
     println!("Hello, world!");
     let ui = LauncherWindow::new()?;
+
+    let desktop_file =
+        Ini::load_from_file("/var/lib/flatpak/exports/share/applications/dev.invrs.oxide.desktop")
+            .unwrap();
+
+    let section = desktop_file.section(Some("Desktop Entry")).unwrap();
+    let desktop_name = section.get("Name").unwrap();
+    let desktop_command = section.get("Exec").unwrap();
 
     // Create action model
     let actions = Rc::new(VecModel::<ActionItem>::default());
@@ -22,6 +33,10 @@ fn main() -> Result<(), slint::PlatformError> {
         name: "Run tests".into(),
         description: "cargo test".into(),
     });
+    actions.push(ActionItem {
+        name: slint::SharedString::from(desktop_name),
+        description: slint::SharedString::from(desktop_command),
+    });
 
     ui.set_actions(ModelRc::from(actions.clone()));
 
@@ -35,10 +50,11 @@ fn main() -> Result<(), slint::PlatformError> {
     });
 
     ui.on_linefinished(move |app| {
-        let foo = Command::new(app).output().unwrap();
-        std::process::exit(0);
+        let foo = Command::new(app).spawn().unwrap();
+        slint::quit_event_loop();
 
-        println!("FOO: {}", String::from_utf8_lossy(&foo.stdout));
+        // Force quit in case slint::quit_event_loop() fails
+        std::process::exit(0);
     });
 
     // Make window frameless and centered
