@@ -11,6 +11,8 @@ fn main() -> Result<(), slint::PlatformError> {
     println!("Hello, world!");
     let ui = LauncherWindow::new()?;
 
+    scraper::get_flatpaks();
+
     let desktop_file =
         Ini::load_from_file("/var/lib/flatpak/exports/share/applications/dev.invrs.oxide.desktop")
             .unwrap();
