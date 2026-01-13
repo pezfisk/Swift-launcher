@@ -2,7 +2,8 @@ import { VerticalBox, HorizontalBox, LineEdit, ScrollView } from "std-widgets.sl
 
 export struct ActionItem {
     name: string,
-    description: string,
+    exec: string,
+    keywords: string,
 }
 
 export component LauncherWindow inherits Window {
@@ -16,6 +17,8 @@ export component LauncherWindow inherits Window {
 
     callback action-clicked(int);
     callback linefinished(string);
+    callback accepted();
+    callback search-changed(string);
 
     forward-focus: runner;
 
@@ -29,8 +32,12 @@ export component LauncherWindow inherits Window {
             placeholder-text: "Type to search...";
             text <=> search-text;
 
-            accepted(text) => {
-                root.linefinished(text);
+            edited(text) => {
+                root.search-changed(text);
+            }
+
+            accepted() => {
+                root.accepted();
             }
         }
 
@@ -38,8 +45,8 @@ export component LauncherWindow inherits Window {
             VerticalBox {
                 spacing: 5px;
                 for action[idx] in actions: Rectangle {
-                    height: 60px;
-                    background: #f0f0f0;
+                    // height: 60px;
+                    background: idx == 0 ? #e0e0e0 : #f0f0f0;
                     border-radius: 8px;
                     
                     TouchArea {
@@ -54,11 +61,13 @@ export component LauncherWindow inherits Window {
                             text: action.name;
                             font-size: 16px;
                             font-weight: 600;
+                            wrap: word-wrap;
                         }
                         Text {
-                            text: action.description;
+                            text: action.exec;
                             font-size: 12px;
                             color: #666;
+                            wrap: word-wrap;
                         }
                     }
                 }

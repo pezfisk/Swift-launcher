@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 slint = "1.14.1"
 rust-ini = "0.21.3"
+fuzzy-matcher = "0.3.7"
 
 [build-dependencies]
 slint-build = "1.14.1"
