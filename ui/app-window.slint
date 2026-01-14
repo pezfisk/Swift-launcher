@@ -48,7 +48,7 @@ export component LauncherWindow inherits Window {
                 VerticalBox {
                     spacing: 5px;
                     for action[idx] in actions: Rectangle {
-                        // height: 60px;
+                        max-height: 60px;
                         background: idx == 0 ? #e0e0e0 : #f0f0f0;
                         border-radius: 8px;
                     

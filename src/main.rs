@@ -17,14 +17,6 @@ fn main() -> Result<(), slint::PlatformError> {
     let all_actions = scraper::get_flatpaks();
     println!("{:?}", all_actions);
 
-    let desktop_file =
-        Ini::load_from_file("/var/lib/flatpak/exports/share/applications/dev.invrs.oxide.desktop")
-            .unwrap();
-
-    // let section = desktop_file.section(Some("Desktop Entry")).unwrap();
-    // let desktop_name = section.get("Name").unwrap();
-    // let desktop_command = section.get("Exec").unwrap();
-
     // Create action model
     let ui_actions = Rc::new(VecModel::<ActionItem>::default());
     ui_actions.set_vec(all_actions.clone());
@@ -92,9 +84,6 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
     });
-
-    // Make window frameless and centered
-    // ui.window().set_decorated(false);
 
     ui.run()
 }

@@ -3,17 +3,19 @@
 Swift Launcher is a keyboard-first launcher written in Rust + Slint.  
 Press a global shortcut (for example `Super+Space`), type a few letters, and run actions instantly.
 
+![screenshot](assets/screenshot.png)
+
 ## Goals
 
 - Minimal latency: open → search → execute fast.
 - Great UX: clean UI, solid keyboard navigation, sane defaults.
-- Ship it as a solid native binary first, then add a Flatpak build later.
+- Ship it as a solid native binary first, then add a Flatpak build later (if possible).
 
 ## Features
 
-- [ ] Fuzzy search (ranked) over actions.
+- [x] Fuzzy search (ranked) over actions.
 - [ ] Shell command actions (optional working directory).
-- [ ] Desktop app actions (from `.desktop` entries).
+- [x] Desktop app actions (from `.desktop` entries).
 - [ ] Project workflows (open folder, run dev server, run tests).
 - [ ] Keyboard-only workflow (Up/Down select, Enter execute, Esc close).
 - [ ] Optional system tray integration (toggle + quick status).
@@ -22,7 +24,7 @@ Press a global shortcut (for example `Super+Space`), type a few letters, and run
 
 ## Installation
 
-### Native (Cargo)
+### Native
 
 ```bash
 git clone https://github.com/pezfisk/swift-launcher
@@ -30,6 +32,8 @@ cd swift-launcher
 cargo build --release
 ./target/release/swift-launcher
 ````
+
+#### CONFIGURE ON DESKTOP ENVIROMENTS
  
 ## Configuration (Not yet implemented, just for reference)
 Default path:
@@ -45,6 +49,6 @@ editor = "vim"
 [[actions]]
 name = "Open dotfiles"
 cwd = "/home/$USER/dotfiles"
-exec = "$vim /home/$USER/dotfiles"
+exec = "$editor /home/$USER/dotfiles"
 ```
 
