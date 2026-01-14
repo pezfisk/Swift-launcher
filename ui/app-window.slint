@@ -11,6 +11,7 @@ export component LauncherWindow inherits Window {
     height: 400px;
     title: "Swift Launcher";
     no-frame: true;
+    background: #00000000;
 
     in-out property <string> search-text;
     in-out property <[ActionItem]> actions;
@@ -23,56 +24,58 @@ export component LauncherWindow inherits Window {
     forward-focus: runner;
 
     Rectangle {
+        background: #a1a1a1;
+        border-radius: 20px;
         
-    VerticalBox {
-        padding: 20px;
-        spacing: 10px;
+        VerticalBox {
+            padding: 20px;
+            spacing: 10px;
 
-        runner := LineEdit {
-            placeholder-text: "Type to search...";
-            text <=> search-text;
+            runner := LineEdit {
+                placeholder-text: "Type to search...";
+                text <=> search-text;
 
-            edited(text) => {
-                root.search-changed(text);
+                edited(text) => {
+                    root.search-changed(text);
+                }
+
+                accepted() => {
+                    root.accepted();
+                }
             }
 
-            accepted() => {
-                root.accepted();
-            }
-        }
-
-        ScrollView {
-            VerticalBox {
-                spacing: 5px;
-                for action[idx] in actions: Rectangle {
-                    // height: 60px;
-                    background: idx == 0 ? #e0e0e0 : #f0f0f0;
-                    border-radius: 8px;
+            ScrollView {
+                VerticalBox {
+                    spacing: 5px;
+                    for action[idx] in actions: Rectangle {
+                        // height: 60px;
+                        background: idx == 0 ? #e0e0e0 : #f0f0f0;
+                        border-radius: 8px;
                     
-                    TouchArea {
-                        clicked => {
-                            root.action-clicked(idx);
+                        TouchArea {
+                            clicked => {
+                                root.action-clicked(idx);
+                            }
                         }
-                    }
                     
-                    VerticalBox {
-                        padding: 12px;
-                        Text {
-                            text: action.name;
-                            font-size: 16px;
-                            font-weight: 600;
-                            wrap: word-wrap;
-                        }
-                        Text {
-                            text: action.exec;
-                            font-size: 12px;
-                            color: #666;
-                            wrap: word-wrap;
+                        VerticalBox {
+                            padding: 12px;
+                            Text {
+                                text: action.name;
+                                font-size: 16px;
+                                font-weight: 600;
+                                wrap: word-wrap;
+                            }
+                            Text {
+                                text: action.exec;
+                                font-size: 12px;
+                                color: #666;
+                                wrap: word-wrap;
+                            }
                         }
                     }
                 }
             }
         }
-    }
     }
 }

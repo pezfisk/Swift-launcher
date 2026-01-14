@@ -1,4 +1,5 @@
 use ini::Ini;
+use regex::Regex;
 use std::env;
 use std::error::Error;
 use std::fs;
@@ -19,10 +20,9 @@ pub fn get_flatpaks() -> Vec<ActionItem> {
 
     for dir in clean_dirs {
         // println!("Current dir: {:?}", dir);
-        if let Ok(entries) = fs::read_dir(dir) {
+        if let Ok(entries) = fs::read_dir(format!("{}/applications", dir)) {
             for entry in entries {
                 if let Ok(dir_entry) = entry {
-                    let file_type = dir_entry.file_type().unwrap();
                     let path = dir_entry.path();
 
                     // println!("Entry: {:?} file_type: {:?}", &dir_entry, &file_type);
@@ -58,16 +58,25 @@ fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
                 let desktop_name = section.get("Name").unwrap_or("");
                 let desktop_command = section.get("Exec").unwrap_or("");
                 let desktop_keywords = section.get("Keywords").unwrap_or("");
+                let desktop_type = section.get("Type").unwrap_or("");
 
-                println!(
-                    "Flatpak found! Name: {} -- Exec: {}",
-                    desktop_name, desktop_command
-                );
-                Ok(ActionItem {
-                    name: desktop_name.into(),
-                    exec: desktop_command.into(),
-                    keywords: desktop_keywords.into(),
-                })
+                if desktop_type == "Application" {
+                    println!(
+                        "Flatpak found! Name: {} -- Exec: {}",
+                        desktop_name, desktop_command
+                    );
+
+                    let desktop_command = strip_field_codes_regex(&desktop_command);
+
+                    Ok(ActionItem {
+                        name: desktop_name.into(),
+                        exec: desktop_command.into(),
+                        keywords: desktop_keywords.into(),
+                    })
+                } else {
+                    println!("Desktop entry doesnt have type or isnt type application");
+                    Err("Desktop entry doesnt have type or isnt type application".into())
+                }
             }
             None => {
                 println!("No Desktop entry");
@@ -79,4 +88,14 @@ fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
     }
 
     // let section = desktop_file.section(Some("Desktop Entry"))?;
+}
+
+fn strip_field_codes_regex(exec: &str) -> String {
+    let re_exec = Regex::new(r"@@.*@@").unwrap();
+    let result = re_exec.replace_all(exec, "");
+
+    let re_xdg = Regex::new(r"%[fFuUdDnNickvm]").unwrap();
+    let result = re_xdg.replace_all(&result, "");
+
+    result.split_whitespace().collect::<Vec<_>>().join(" ")
 }
