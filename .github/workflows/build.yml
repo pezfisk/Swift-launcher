@@ -1,0 +1,215 @@
+name: Release Multi-Format
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  APP_NAME: Swift-launcher
+  BINARY_NAME: Swift-launcher
+
+jobs:
+  build-deb:
+    name: Build DEB package
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install Qt6 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qt6-base-dev libqt6gui6 libqt6widgets6 libgl1-mesa-dev
+      
+      - name: Install cargo-deb
+        run: cargo install cargo-deb
+      
+      - name: Build release binary
+        run: cargo build --release --locked
+      
+      - name: Create DEB package
+        run: cargo deb --no-build --no-strip
+      
+      - name: Rename package
+        run: |
+          DEB_FILE=$(find target/debian -name "*.deb" | head -1)
+          cp "$DEB_FILE" "${{ env.APP_NAME }}-amd64.deb"
+      
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: ${{ env.APP_NAME }}-amd64.deb
+
+  build-rpm:
+    name: Build RPM package
+    runs-on: ubuntu-22.04
+    container: 
+      image: fedora:40
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          dnf install -y rust cargo qt6-qtbase-devel mesa-libGL-devel gcc gcc-c++ cmake pkg-config
+      
+      - name: Install cargo-generate-rpm
+        run: cargo install cargo-generate-rpm
+      
+      - name: Build release binary
+        run: cargo build --release --locked
+      
+      - name: Generate RPM
+        run: cargo generate-rpm
+      
+      - name: Rename package
+        run: |
+          RPM_FILE=$(find target/generate-rpm -name "*.rpm" | head -1)
+          cp "$RPM_FILE" "${{ env.APP_NAME }}-x86_64.rpm"
+      
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: ${{ env.APP_NAME }}-x86_64.rpm
+
+  build-arch:
+    name: Build Arch package
+    runs-on: ubuntu-22.04
+    container:
+      image: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel rust cargo qt6-base mesa
+      
+      - name: Build release binary
+        run: cargo build --release --locked
+      
+      - name: Create package structure
+        run: |
+          mkdir -p package/usr/bin
+          mkdir -p package/usr/share/doc/${{ env.APP_NAME }}
+          cp target/release/${{ env.BINARY_NAME }} package/usr/bin/
+          strip package/usr/bin/${{ env.BINARY_NAME }} || true
+          
+      - name: Create pkg.tar.gz
+        run: |
+          cd package
+          tar czf ../${{ env.APP_NAME }}-x86_64.pkg.tar.gz usr/
+          cd ..
+      
+      - name: Upload Arch artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: ${{ env.APP_NAME }}-x86_64.pkg.tar.gz
+
+  build-appimage:
+    name: Build AppImage
+    runs-on: ubuntu-20.04  # Use older Ubuntu for better compatibility
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install Qt6 and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qt6-base-dev libqt6gui6 libqt6widgets6 libgl1-mesa-dev \
+            file libfuse2
+      
+      - name: Download linuxdeploy tools
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+      
+      - name: Build release binary
+        run: cargo build --release --locked
+      
+      - name: Strip binary
+        run: strip target/release/${{ env.BINARY_NAME }}
+      
+      - name: Create AppImage
+        run: |
+          export QMAKE=/usr/bin/qmake6
+          export VERSION="${{ github.ref_name }}"
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable target/release/${{ env.BINARY_NAME }} \
+            --plugin qt \
+            --output appimage
+      
+      - name: Rename AppImage
+        run: |
+          APPIMAGE_FILE=$(find . -name "${{ env.APP_NAME }}*.AppImage" -type f | head -1)
+          mv "$APPIMAGE_FILE" "${{ env.APP_NAME }}-x86_64.AppImage"
+      
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: ${{ env.APP_NAME }}-x86_64.AppImage
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-deb, build-rpm, build-arch, build-appimage]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Organize release files
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.pkg.tar.gz" -o -name "*.AppImage" \) -exec cp {} release/ \;
+          ls -lh release/
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          draft: false
+          generate_release_notes: true
+          body: |
+            ## Installation Instructions
+            
+            ### Debian/Ubuntu (.deb)
+            ```bash
+            sudo dpkg -i ${{ env.APP_NAME }}-amd64.deb
+            sudo apt-get install -f  # Fix dependencies if needed
+            ```
+            
+            ### Fedora/RHEL (.rpm)
+            ```bash
+            sudo dnf install ${{ env.APP_NAME }}-x86_64.rpm
+            ```
+            
+            ### Arch Linux (.pkg.tar.gz)
+            ```bash
+            sudo pacman -U ${{ env.APP_NAME }}-x86_64.pkg.tar.gz
+            ```
+            
+            ### Universal Linux (AppImage)
+            ```bash
+            chmod +x ${{ env.APP_NAME }}-x86_64.AppImage
+            ./${{ env.APP_NAME }}-x86_64.AppImage
+            ```
+            
+            **Recommended**: Use the AppImage for maximum compatibility across all distributions.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

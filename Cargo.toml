@@ -2,6 +2,9 @@
 name = "Swift-launcher"
 version = "0.1.0"
 edition = "2024"
+authors = ["Marco Rodriguez marco@invrs.dev"]
+description = "Fast, light and native launcher"
+liscense = "GPLv3"
 
 [dependencies]
 slint = "1.14.1"
@@ -12,3 +15,19 @@ evalexpr = "13.1.0"
 
 [build-dependencies]
 slint-build = "1.14.1"
+
+[package.metadata.deb]
+maintainer = "Marco Rodriguez marco@invrs.dev"
+copyright = "2026, Marco Rodriguez"
+depends = "libqt6core6, libqtgui6, libqt6widget6"
+section = "utils"
+priority = "optional"
+assets = [
+  ["target/release/Swift-launcher", "usr/bin/", "755"]
+]
+
+[pacakge.metadata.generate-rpm]
+license = "GPLv3"
+assets = [
+  { source = "target/release/Swift-launcher", dest = "/usr/bin/Swift-launcher", mode = "755" },
+]
