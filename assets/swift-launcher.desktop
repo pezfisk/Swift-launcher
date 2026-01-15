@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Swift-launcher
+Exec=Swift-launcher
+Icon=swift-launcher
+Categories=Utility;
+Terminal=false
+
