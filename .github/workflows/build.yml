@@ -56,7 +56,10 @@ jobs:
       
       - name: Install build dependencies
         run: |
-          dnf install -y rust cargo qt6-qtbase-devel mesa-libGL-devel gcc gcc-c++ cmake pkg-config
+          dnf install -y curl gcc gcc-c++ cmake pkg-config rpm-build qt6-qtbase-devel mesa-libGL-devel
+
+      - name: Install cargo
+        run: curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
       
       - name: Install cargo-generate-rpm
         run: cargo install cargo-generate-rpm
@@ -115,7 +118,7 @@ jobs:
 
   build-appimage:
     name: Build AppImage
-    runs-on: ubuntu-20.04  # Use older Ubuntu for better compatibility
+    runs-on: ubuntu-22.04  # Use older Ubuntu for better compatibility
     steps:
       - uses: actions/checkout@v4
       
