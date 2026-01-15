@@ -60,6 +60,9 @@ jobs:
 
       - name: Install cargo
         run: curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+
+      - name: Source .bashrc
+        run: source $HOME/.cargo/env
       
       - name: Install cargo-generate-rpm
         run: cargo install cargo-generate-rpm
