@@ -2,6 +2,7 @@ slint::include_modules!();
 
 use ini::Ini;
 use slint::{Model, ModelRc, VecModel};
+use std::error::Error;
 use std::process::Command;
 use std::rc::Rc;
 
@@ -10,11 +11,17 @@ use fuzzy_matcher::FuzzyMatcher;
 
 mod scraper;
 
+enum queryType {
+    search,
+    calculator,
+    directory,
+}
+
 fn main() -> Result<(), slint::PlatformError> {
     println!("Hello, world!");
     let ui = LauncherWindow::new()?;
 
-    let all_actions = scraper::get_flatpaks();
+    let all_actions = scraper::get_programs();
     println!("{:?}", all_actions);
 
     // Create action model
@@ -44,22 +51,39 @@ fn main() -> Result<(), slint::PlatformError> {
             return;
         }
 
-        let mut filtered: Vec<(i64, ActionItem)> = display_model
-            .iter()
-            .filter_map(|item| {
-                let score = matcher
-                    .fuzzy_match(&item.name, &text)
-                    .or_else(|| matcher.fuzzy_match(&item.exec, &text))
-                    .or_else(|| matcher.fuzzy_match(&item.keywords, &text));
+        match parse_input(query) {
+            Ok(queryType::search) => {
+                let mut filtered: Vec<(i64, ActionItem)> = display_model
+                    .iter()
+                    .filter_map(|item| {
+                        let score = matcher
+                            .fuzzy_match(&item.name, &text)
+                            .or_else(|| matcher.fuzzy_match(&item.exec, &text))
+                            .or_else(|| matcher.fuzzy_match(&item.keywords, &text));
 
-                score.map(|s| (s, item.clone()))
-            })
-            .collect();
+                        score.map(|s| (s, item.clone()))
+                    })
+                    .collect();
 
-        filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+                filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
 
-        let new_model: Vec<ActionItem> = filtered.into_iter().map(|(_, item)| item).collect();
-        display_model.set_vec(new_model);
+                let new_model: Vec<ActionItem> =
+                    filtered.into_iter().map(|(_, item)| item).collect();
+                display_model.set_vec(new_model);
+            }
+            Ok(queryType::calculator) => {
+                let new_model = Rc::new(VecModel::<ActionItem>::default());
+
+                new_model.push(ActionItem {
+                    exec: slint::SharedString::from("Test"),
+                    keywords: slint::SharedString::from("Test"),
+                    name: slint::SharedString::from("Test"),
+                });
+
+                display_model.set_vec(new_model);
+            }
+            _ => {}
+        }
     });
 
     ui.on_linefinished(move |app| {
@@ -87,3 +111,28 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.run()
 }
+
+fn parse_input(query: &str) -> Result<queryType, Box<dyn Error>> {
+    if let Some(first_char) = query.chars().next().as_ref() {
+        match first_char {
+            '=' => {
+                println!("Calculator mode");
+                Ok(queryType::calculator)
+            }
+
+            '/' => {
+                println!("Directory mode");
+                Ok(queryType::directory)
+            }
+
+            _ => {
+                println!("Normal mode");
+                Ok(queryType::search)
+            }
+        }
+    } else {
+        Err("Failed to get first character".into())
+    }
+}
+
+// fn fuzzy_search()

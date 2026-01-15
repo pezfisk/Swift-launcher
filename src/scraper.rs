@@ -9,7 +9,7 @@ use crate::ActionItem;
 
 const DIRS: &[&str] = &["/var/lib/flatpak/exports/share/applications"];
 
-pub fn get_flatpaks() -> Vec<ActionItem> {
+pub fn get_programs() -> Vec<ActionItem> {
     let data_dirs = env::var("XDG_DATA_DIRS").unwrap();
     let mut clean_dirs: Vec<&str> = data_dirs.split(":").collect();
     clean_dirs.extend_from_slice(DIRS);
