@@ -24,7 +24,6 @@ pub fn get_programs() -> Vec<ActionItem> {
             for entry in entries {
                 if let Ok(dir_entry) = entry {
                     let path = dir_entry.path();
-
                     // println!("Entry: {:?} file_type: {:?}", &dir_entry, &file_type);
 
                     if let Ok(meta) = fs::metadata(&path) {

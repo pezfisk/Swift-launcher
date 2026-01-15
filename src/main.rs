@@ -3,11 +3,14 @@ slint::include_modules!();
 use ini::Ini;
 use slint::{Model, ModelRc, VecModel};
 use std::error::Error;
+use std::fs;
 use std::process::Command;
 use std::rc::Rc;
 
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+
+use evalexpr::*;
 
 mod scraper;
 
@@ -72,16 +75,48 @@ fn main() -> Result<(), slint::PlatformError> {
                 display_model.set_vec(new_model);
             }
             Ok(queryType::calculator) => {
-                let new_model = Rc::new(VecModel::<ActionItem>::default());
+                let equation = query.split_once("=").unwrap().1;
+                match eval(equation) {
+                    Ok(value) => {
+                        // println!("Equation has answer");
+                        // println!("{}", value);
 
-                new_model.push(ActionItem {
-                    exec: slint::SharedString::from("Test"),
-                    keywords: slint::SharedString::from("Test"),
-                    name: slint::SharedString::from("Test"),
-                });
+                        let new_model: Vec<ActionItem> = vec![ActionItem {
+                            exec: slint::SharedString::from(""),
+                            keywords: slint::SharedString::from("Test"),
+                            name: slint::SharedString::from(format!("{} = {}", equation, value)),
+                        }];
 
-                display_model.set_vec(new_model);
+                        display_model.set_vec(new_model);
+                    }
+
+                    Err(_) => {
+                        println!("Equation has no answer");
+                    }
+                }
             }
+            Ok(queryType::directory) => {
+                if query.ends_with("/") {
+                    if let Ok(dir) = fs::read_dir(query) {
+                        let mut new_model: Vec<ActionItem> = vec![];
+                        for entry in dir {
+                            if let Ok(dir_entry) = entry {
+                                println!("{:?}", dir_entry);
+                                new_model.push(ActionItem {
+                                    exec: slint::SharedString::from(""),
+                                    keywords: slint::SharedString::from(""),
+                                    name: slint::SharedString::from(
+                                        dir_entry.path().to_str().unwrap(),
+                                    ),
+                                });
+                            }
+                        }
+
+                        display_model.set_vec(new_model);
+                    }
+                }
+            }
+
             _ => {}
         }
     });
