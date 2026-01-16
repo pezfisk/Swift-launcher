@@ -8,6 +8,7 @@ liscense = "GPLv3"
 
 [dependencies]
 slint = "1.14.1"
+spell-framework = "1.0.1"
 rust-ini = "0.21.3"
 fuzzy-matcher = "0.3.7"
 regex = "1.12.2"

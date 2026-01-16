@@ -25,6 +25,7 @@
             libGL
             qt6.qtbase
             pkg-config
+            pam
             rust-analyzer
             lldb_20
             slint-lsp
@@ -38,6 +39,7 @@
                 wayland
                 libxkbcommon
                 fontconfig
+                pam
           ] }";
         };
       }

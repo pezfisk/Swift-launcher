@@ -12,6 +12,12 @@ use fuzzy_matcher::FuzzyMatcher;
 
 use evalexpr::*;
 
+use spell_framework::{
+    cast_spell,
+    layer_properties::{BoardType, LayerAnchor, LayerType, WindowConf},
+    wayland_adapter::SpellWin,
+};
+
 mod scraper;
 
 enum queryType {
@@ -22,6 +28,7 @@ enum queryType {
 
 fn main() -> Result<(), slint::PlatformError> {
     println!("Hello, world!");
+
     let ui = LauncherWindow::new()?;
 
     let all_actions = scraper::get_programs();
@@ -144,7 +151,28 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
-    ui.run()
+    if !is_gnome() {
+        println!("Using wlr-layer-shell");
+
+        let window_conf = WindowConf::new(
+            600,
+            400,
+            (Some(LayerAnchor::TOP), None),
+            (10, 0, 0, 0),
+            LayerType::Overlay,
+            BoardType::Exclusive,
+            None,
+        );
+
+        let waywindow = SpellWin::invoke_spell("launcher", window_conf);
+
+        cast_spell(waywindow, None, None).unwrap();
+    } else {
+        println!("Running on gnome, using standard window");
+        ui.run()?;
+    }
+
+    Ok(())
 }
 
 fn parse_input(query: &str) -> Result<queryType, Box<dyn Error>> {
@@ -168,6 +196,15 @@ fn parse_input(query: &str) -> Result<queryType, Box<dyn Error>> {
     } else {
         Err("Failed to get first character".into())
     }
+}
+
+fn is_gnome() -> bool {
+    std::env::var("XDG_CURRENT_DESKTOP")
+        .map(|desktop| desktop.to_lowercase().contains("gnome"))
+        .unwrap_or(false)
+        || std::env::var("XDG_SESSION_DESKTOP")
+            .map(|desktop| desktop.to_lowercase().contains("gnome"))
+            .unwrap_or(false)
 }
 
 // fn fuzzy_search()
