@@ -24,7 +24,7 @@ jobs:
       - name: Install Qt6 dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qt6-base-dev libqt6gui6 libqt6widgets6 libgl1-mesa-dev
+          sudo apt-get install -y qt6-base-dev libqt6gui6 libqt6widgets6 libgl1-mesa-dev libxkbcommon-x11-dev libpam0g-dev
       
       - name: Install cargo-deb
         run: cargo install cargo-deb
@@ -131,8 +131,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qt6-base-dev libqt6gui6 libqt6widgets6 libgl1-mesa-dev \
-            file libfuse2
-      
+            file libfuse2 libxkbcommon-x11-dev libpam0g-dev      
       - name: Download linuxdeploy tools
         run: |
           wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
