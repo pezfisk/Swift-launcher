@@ -31,7 +31,20 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let ui = LauncherWindow::new()?;
 
-    let all_actions = scraper::get_programs();
+    let window_conf = WindowConf::new(
+        600,
+        400,
+        (Some(LayerAnchor::TOP), None),
+        (10, 0, 0, 0),
+        LayerType::Overlay,
+        BoardType::Exclusive,
+        None,
+    );
+
+    let waywindow = SpellWin::invoke_spell("launcher", window_conf);
+
+    // TOOD: Need to properly handle Option<>
+    let all_actions = scraper::get_programs().unwrap();
     println!("{:?}", all_actions);
 
     // Create action model
@@ -153,21 +166,9 @@ fn main() -> Result<(), slint::PlatformError> {
 
     if !is_gnome() {
         println!("Using wlr-layer-shell");
-
-        let window_conf = WindowConf::new(
-            600,
-            400,
-            (Some(LayerAnchor::TOP), None),
-            (10, 0, 0, 0),
-            LayerType::Overlay,
-            BoardType::Exclusive,
-            None,
-        );
-
-        let waywindow = SpellWin::invoke_spell("launcher", window_conf);
-
         cast_spell(waywindow, None, None).unwrap();
     } else {
+        // GNOME IS CURRENTLY BROKEN --- NEED TO FIX
         println!("Running on gnome, using standard window");
         ui.run()?;
     }

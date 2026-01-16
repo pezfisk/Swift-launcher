@@ -3,48 +3,53 @@ use regex::Regex;
 use std::env;
 use std::error::Error;
 use std::fs;
+use std::option::Option;
 use std::path::Path;
 
 use crate::ActionItem;
 
 const DIRS: &[&str] = &["/var/lib/flatpak/exports/share/applications"];
 
-pub fn get_programs() -> Vec<ActionItem> {
-    let data_dirs = env::var("XDG_DATA_DIRS").unwrap();
-    let mut clean_dirs: Vec<&str> = data_dirs.split(":").collect();
-    clean_dirs.extend_from_slice(DIRS);
-    clean_dirs.retain(|&s| !s.starts_with("/nix/store/"));
-    println!("{:?}", clean_dirs);
+pub fn get_programs() -> Option<Vec<ActionItem>> {
+    if let Ok(data_dirs) = env::var("XDG_DATA_DIRS") {
+        let mut clean_dirs: Vec<&str> = data_dirs.split(":").collect();
+        clean_dirs.extend_from_slice(DIRS);
+        clean_dirs.retain(|&s| !s.starts_with("/nix/store/"));
+        println!("{:?}", clean_dirs);
 
-    let mut items = Vec::new();
+        let mut items = Vec::new();
 
-    for dir in clean_dirs {
-        // println!("Current dir: {:?}", dir);
-        if let Ok(entries) = fs::read_dir(format!("{}/applications", dir)) {
-            for entry in entries {
-                if let Ok(dir_entry) = entry {
-                    let path = dir_entry.path();
-                    // println!("Entry: {:?} file_type: {:?}", &dir_entry, &file_type);
+        for dir in clean_dirs {
+            // println!("Current dir: {:?}", dir);
+            if let Ok(entries) = fs::read_dir(format!("{}/applications", dir)) {
+                for entry in entries {
+                    if let Ok(dir_entry) = entry {
+                        let path = dir_entry.path();
+                        // println!("Entry: {:?} file_type: {:?}", &dir_entry, &file_type);
 
-                    if let Ok(meta) = fs::metadata(&path) {
-                        if meta.is_file() {
-                            // println!("Found desktop file");
+                        if let Ok(meta) = fs::metadata(&path) {
+                            if meta.is_file() {
+                                // println!("Found desktop file");
 
-                            if let Ok(action_item) = get_desktop_data(&path) {
-                                items.push(action_item);
+                                if let Ok(action_item) = get_desktop_data(&path) {
+                                    items.push(action_item);
+                                }
+                            } else if meta.is_dir() {
+                                // println!("Skipping directory");
                             }
-                        } else if meta.is_dir() {
-                            // println!("Skipping directory");
                         }
                     }
                 }
             }
         }
+
+        println!("Finished scraping directories");
+
+        Some(items)
+    } else {
+        println!("XDG_DATA_DIRS not found, cant parse programs");
+        None
     }
-
-    println!("Finished scraping directories");
-
-    items
 }
 
 fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
