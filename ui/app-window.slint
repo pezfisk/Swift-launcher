@@ -1,4 +1,6 @@
 import { VerticalBox, HorizontalBox, LineEdit, ScrollView } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+export { Theme }
 
 export struct ActionItem {
     name: string,
@@ -7,8 +9,8 @@ export struct ActionItem {
 }
 
 export component LauncherWindow inherits Window {
-    width: 600px;
-    height: 400px;
+    width: Theme.width;
+    height: Theme.height;
     title: "Swift Launcher";
     no-frame: true;
     background: transparent;
@@ -25,8 +27,8 @@ export component LauncherWindow inherits Window {
     forward-focus: runner;
 
     Rectangle {
-        background: #a1a1a1;
-        border-radius: 20px;
+        background: Theme.background-color;
+        border-radius: Theme.border-radius;
         
         VerticalBox {
             padding: 20px;
@@ -58,9 +60,9 @@ export component LauncherWindow inherits Window {
                 VerticalBox {
                     spacing: 5px;
                     for action[idx] in actions: Rectangle {
-                        max-height: 60px;
-                        background: idx == 0 ? #e0e0e0 : #f0f0f0;
-                        border-radius: 8px;
+                        max-height: Theme.max-height;
+                        background: idx == 0 ? Theme.option-color-selected : Theme.option-color;
+                        border-radius: Theme.option-border-radius;
                     
                         TouchArea {
                             clicked => {
@@ -72,15 +74,16 @@ export component LauncherWindow inherits Window {
                             padding: 12px;
                             Text {
                                 text: action.name;
-                                font-size: 16px;
+                                font-size: Theme.name-font-size;
                                 font-weight: 600;
                                 wrap: word-wrap;
                             }
-                            Text {
+                            if (Theme.exec-show): Text {
                                 text: action.exec;
-                                font-size: 12px;
+                                font-size: Theme.exec-font-size;
                                 color: #666;
                                 wrap: word-wrap;
+
                             }
                         }
                     }

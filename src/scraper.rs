@@ -15,7 +15,7 @@ pub fn get_programs() -> Option<Vec<ActionItem>> {
         let mut clean_dirs: Vec<&str> = data_dirs.split(":").collect();
         clean_dirs.extend_from_slice(DIRS);
         clean_dirs.retain(|&s| !s.starts_with("/nix/store/"));
-        println!("{:?}", clean_dirs);
+        // println!("{:?}", clean_dirs);
 
         let mut items = Vec::new();
 
@@ -54,7 +54,7 @@ pub fn get_programs() -> Option<Vec<ActionItem>> {
 
 fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
     // let desktop_file = Ini::load_from_file(&path).unwrap();
-    println!("Getting .desktop data");
+    // println!("Getting .desktop data");
 
     if let Ok(conf) = Ini::load_from_file(&path) {
         match conf.section(Some("Desktop Entry")) {
@@ -65,10 +65,10 @@ fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
                 let desktop_type = section.get("Type").unwrap_or("");
 
                 if desktop_type == "Application" {
-                    println!(
-                        "Flatpak found! Name: {} -- Exec: {}",
-                        desktop_name, desktop_command
-                    );
+                    // println!(
+                    //     "Flatpak found! Name: {} -- Exec: {}",
+                    //     desktop_name, desktop_command
+                    // );
 
                     let desktop_command = strip_field_codes_regex(&desktop_command);
 

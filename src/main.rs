@@ -19,6 +19,7 @@ use spell_framework::{
 };
 
 mod scraper;
+mod theme;
 
 enum queryType {
     search,
@@ -29,11 +30,14 @@ enum queryType {
 fn main() -> Result<(), Box<dyn Error>> {
     println!("Hello, world!");
 
+    let window_size = theme::get_window_info();
+    println!("{:?}", window_size);
+
     let window_conf = WindowConf::new(
-        600,
-        400,
-        (Some(LayerAnchor::TOP), None),
-        (10, 0, 0, 0),
+        window_size.0,
+        window_size.1,
+        (None, None),
+        (0, 0, 0, 0),
         LayerType::Overlay,
         BoardType::Exclusive,
         None,
@@ -42,6 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let waywindow = SpellWin::invoke_spell("swift-launcher", window_conf);
 
     let ui = LauncherWindow::new()?;
+    let theme = theme::apply_theme(&ui);
 
     // TOOD: Need to properly handle Option<>
     let all_actions = scraper::get_programs().unwrap();
@@ -81,8 +86,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .filter_map(|item| {
                         let score = matcher
                             .fuzzy_match(&item.name, &text)
-                            .or_else(|| matcher.fuzzy_match(&item.exec, &text))
-                            .or_else(|| matcher.fuzzy_match(&item.keywords, &text));
+                            .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
+                            .or_else(|| matcher.fuzzy_match(&item.exec, &text));
 
                         score.map(|s| (s, item.clone()))
                     })
