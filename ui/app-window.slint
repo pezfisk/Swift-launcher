@@ -19,6 +19,7 @@ export component LauncherWindow inherits Window {
     callback action-clicked(int);
     callback linefinished(string);
     callback accepted();
+    callback quit();
     callback search-changed(string);
 
     forward-focus: runner;
@@ -34,6 +35,15 @@ export component LauncherWindow inherits Window {
             runner := LineEdit {
                 placeholder-text: "Type to search...";
                 text <=> search-text;
+
+                key-pressed(event) => {
+                    if (event.text == Key.Escape) {
+                        root.quit();
+                        return accept;
+                    }
+
+                    return reject;
+                }
 
                 edited(text) => {
                     root.search-changed(text);

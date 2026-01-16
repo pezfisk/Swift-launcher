@@ -26,10 +26,8 @@ enum queryType {
     directory,
 }
 
-fn main() -> Result<(), slint::PlatformError> {
+fn main() -> Result<(), Box<dyn Error>> {
     println!("Hello, world!");
-
-    let ui = LauncherWindow::new()?;
 
     let window_conf = WindowConf::new(
         600,
@@ -41,7 +39,9 @@ fn main() -> Result<(), slint::PlatformError> {
         None,
     );
 
-    let waywindow = SpellWin::invoke_spell("launcher", window_conf);
+    let waywindow = SpellWin::invoke_spell("swift-launcher", window_conf);
+
+    let ui = LauncherWindow::new()?;
 
     // TOOD: Need to properly handle Option<>
     let all_actions = scraper::get_programs().unwrap();
@@ -143,7 +143,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.on_linefinished(move |app| {
         let foo = Command::new("sh").arg("-c").arg(app.as_str()).spawn();
-        slint::quit_event_loop();
+        // slint::quit_event_loop();
 
         // Force quit in case slint::quit_event_loop() fails
         std::process::exit(0);
@@ -160,20 +160,27 @@ fn main() -> Result<(), slint::PlatformError> {
                 let _ = Command::new("sh").arg("-c").arg(&first_item.exec).spawn();
 
                 slint::quit_event_loop();
+
+                std::process::exit(0);
             }
         }
     });
 
-    if !is_gnome() {
-        println!("Using wlr-layer-shell");
-        cast_spell(waywindow, None, None).unwrap();
-    } else {
-        // GNOME IS CURRENTLY BROKEN --- NEED TO FIX
-        println!("Running on gnome, using standard window");
-        ui.run()?;
-    }
+    ui.on_quit(move || {
+        std::process::exit(0);
+    });
 
-    Ok(())
+    // if !is_gnome() {
+    println!("Using wlr-layer-shell");
+    // ui.run()?;
+    cast_spell(waywindow, None, None)
+    // } else {
+    //     // GNOME IS CURRENTLY BROKEN --- NEED TO FIX
+    //     println!("Running on gnome, using standard window");
+    //     ui.run()?;
+    // }
+
+    // Ok(())
 }
 
 fn parse_input(query: &str) -> Result<queryType, Box<dyn Error>> {
