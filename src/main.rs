@@ -95,24 +95,24 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .collect();
                 display_model.set_vec(items);
                 return;
+            } else {
+                let mut filtered: Vec<(i64, ActionItem)> = display_model
+                    .iter()
+                    .filter_map(|item| {
+                        let score = matcher
+                            .fuzzy_match(&item.name, &text)
+                            .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
+                            .or_else(|| matcher.fuzzy_match(&item.exec, &text));
+
+                        score.map(|s| (s, item.clone()))
+                    })
+                    .collect();
+
+                filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+
+                let new_model: Vec<ActionItem> = filtered.into_iter().map(|(_, item)| item).collect();
+                display_model.set_vec(new_model);
             }
-        } else {
-            let mut filtered: Vec<(i64, ActionItem)> = display_model
-                .iter()
-                .filter_map(|item| {
-                    let score = matcher
-                        .fuzzy_match(&item.name, &text)
-                        .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
-                        .or_else(|| matcher.fuzzy_match(&item.exec, &text));
-
-                    score.map(|s| (s, item.clone()))
-                })
-                .collect();
-
-            filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
-
-            let new_model: Vec<ActionItem> = filtered.into_iter().map(|(_, item)| item).collect();
-            display_model.set_vec(new_model);
         }
     });
 
