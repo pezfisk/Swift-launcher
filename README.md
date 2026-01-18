@@ -42,7 +42,7 @@ Swift Launcher uses **WebAssembly (WASM) Components** for plugins, allowing you 
 
 ### Understanding WASM Architecture
 
-**📖 [Read WASM.md](./assets/WASM.md)** for a comprehensive explanation of:
+**[Read WASM.md](./assets/WASM.md)** for a comprehensive explanation of:
 - What WASM is and why we use it
 - The Component Model and interfaces
 - Shift's WASM architecture and how plugins are loaded
@@ -57,7 +57,7 @@ Swift Launcher uses **WebAssembly (WASM) Components** for plugins, allowing you 
 
 ### Creating Your First Plugin
 
-**📖 [Read PLUGINS.md](./assets/PLUGINS.md)** for complete instructions on:
+**[Read PLUGINS.md](./assets/PLUGINS.md)** for complete instructions on:
 - Building the echo plugin in **Rust**, **Python**, **Go**, **JavaScript**, **C/C++**, and **Zig**
 - How to target `wasm32-wasip2`
 - Installation and testing

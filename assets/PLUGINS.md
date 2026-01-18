@@ -563,17 +563,3 @@ RUST_BACKTRACE=full ./swift-launcher
 
 The backtraces will show exactly where in your plugin code it crashed.
 
----
-
-## Language Comparison Summary
-
-| Language | Ease | Speed | Binary Size | Best For |
-| :--- | :--- | :--- | :--- | :--- |
-| **Rust** | ⭐⭐⭐ | 🚀🚀🚀 | 2MB | Production, performance |
-| **Python** | ⭐ | 🚀 | 15MB | Quick scripting, iteration |
-| **Go** | ⭐⭐ | 🚀🚀 | 3MB | Networking, concurrency |
-| **JavaScript** | ⭐⭐ | 🚀🚀 | 8MB | npm ecosystem, quick |
-| **C** | ⭐⭐⭐ | 🚀🚀🚀 | 500KB | Legacy code, embedded |
-| **Zig** | ⭐⭐⭐ | 🚀🚀🚀 | 1MB | Systems, safety |
-
-Choose **Rust** for most plugins. Choose others when you have a specific reason (existing codebase, npm package, maximum speed, etc.).
