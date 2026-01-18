@@ -3,20 +3,36 @@
     naersk.url = "github:nix-community/naersk/master";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  outputs = { self, nixpkgs, utils, naersk }:
+  outputs = { self, nixpkgs, utils, naersk, rust-overlay }:
     utils.lib.eachDefaultSystem (system:
       let
-        pkgs = import nixpkgs { inherit system; };
-        naersk-lib = pkgs.callPackage naersk { };
+        pkgs = import nixpkgs
+          {
+            inherit system;
+            overlays = [ rust-overlay.overlays.default ];
+          };
+
+        rustToolChain = pkgs.rust-bin.stable.latest.default.override
+          {
+            extensions = [ "rust-src" "rust-analyzer" ];
+            targets = [ "wasm32-wasip1" ];
+          };
+
+        naersk-lib = pkgs.callPackage naersk {
+          cargo = rustToolChain;
+          rustc = rustToolChain;
+        };
       in
       {
         defaultPackage = naersk-lib.buildPackage ./.;
         devShell = with pkgs; mkShell {
           buildInputs = [
-            cargo
-            rustc
+            rustToolChain
+            cargo-component
+            wasmtime
             rustfmt
             pre-commit
             rustPackages.clippy

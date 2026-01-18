@@ -18,6 +18,7 @@ use spell_framework::{
     wayland_adapter::SpellWin,
 };
 
+mod plugins;
 mod scraper;
 mod theme;
 
@@ -47,6 +48,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let ui = LauncherWindow::new()?;
     let theme = theme::apply_theme(&ui);
+
+    let mut manager = plugins::PluginManager::new();
+    manager.load_all()?;
 
     // TOOD: Need to properly handle Option<>
     let all_actions = scraper::get_programs().unwrap();
@@ -79,70 +83,36 @@ fn main() -> Result<(), Box<dyn Error>> {
             return;
         }
 
-        match parse_input(query) {
-            Ok(queryType::search) => {
-                let mut filtered: Vec<(i64, ActionItem)> = display_model
-                    .iter()
-                    .filter_map(|item| {
-                        let score = matcher
-                            .fuzzy_match(&item.name, &text)
-                            .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
-                            .or_else(|| matcher.fuzzy_match(&item.exec, &text));
-
-                        score.map(|s| (s, item.clone()))
+        if let Some(first_char) = query.chars().next() {
+            if let Some(res) = manager.run_trigger(first_char, query) {
+                let items: Vec<ActionItem> = res
+                    .into_iter()
+                    .map(|item| ActionItem {
+                        name: item.name.into(),
+                        exec: item.exec.into(),
+                        keywords: item.keywords.into(),
                     })
                     .collect();
-
-                filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
-
-                let new_model: Vec<ActionItem> =
-                    filtered.into_iter().map(|(_, item)| item).collect();
-                display_model.set_vec(new_model);
+                display_model.set_vec(items);
+                return;
             }
-            Ok(queryType::calculator) => {
-                let equation = query.split_once("=").unwrap().1;
-                match eval(equation) {
-                    Ok(value) => {
-                        // println!("Equation has answer");
-                        // println!("{}", value);
+        } else {
+            let mut filtered: Vec<(i64, ActionItem)> = display_model
+                .iter()
+                .filter_map(|item| {
+                    let score = matcher
+                        .fuzzy_match(&item.name, &text)
+                        .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
+                        .or_else(|| matcher.fuzzy_match(&item.exec, &text));
 
-                        let new_model: Vec<ActionItem> = vec![ActionItem {
-                            exec: slint::SharedString::from(""),
-                            keywords: slint::SharedString::from("Test"),
-                            name: slint::SharedString::from(format!("{} = {}", equation, value)),
-                        }];
+                    score.map(|s| (s, item.clone()))
+                })
+                .collect();
 
-                        display_model.set_vec(new_model);
-                    }
+            filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
 
-                    Err(_) => {
-                        println!("Equation has no answer");
-                    }
-                }
-            }
-            Ok(queryType::directory) => {
-                if query.ends_with("/") {
-                    if let Ok(dir) = fs::read_dir(query) {
-                        let mut new_model: Vec<ActionItem> = vec![];
-                        for entry in dir {
-                            if let Ok(dir_entry) = entry {
-                                println!("{:?}", dir_entry);
-                                new_model.push(ActionItem {
-                                    exec: slint::SharedString::from(""),
-                                    keywords: slint::SharedString::from(""),
-                                    name: slint::SharedString::from(
-                                        dir_entry.path().to_str().unwrap(),
-                                    ),
-                                });
-                            }
-                        }
-
-                        display_model.set_vec(new_model);
-                    }
-                }
-            }
-
-            _ => {}
+            let new_model: Vec<ActionItem> = filtered.into_iter().map(|(_, item)| item).collect();
+            display_model.set_vec(new_model);
         }
     });
 
@@ -186,29 +156,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     // }
 
     // Ok(())
-}
-
-fn parse_input(query: &str) -> Result<queryType, Box<dyn Error>> {
-    if let Some(first_char) = query.chars().next().as_ref() {
-        match first_char {
-            '=' => {
-                println!("Calculator mode");
-                Ok(queryType::calculator)
-            }
-
-            '/' => {
-                println!("Directory mode");
-                Ok(queryType::directory)
-            }
-
-            _ => {
-                println!("Normal mode");
-                Ok(queryType::search)
-            }
-        }
-    } else {
-        Err("Failed to get first character".into())
-    }
 }
 
 fn is_gnome() -> bool {

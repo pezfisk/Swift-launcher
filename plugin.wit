@@ -1,0 +1,17 @@
+package shift:launcher;
+
+interface runner {
+  record action-item {
+    name: string,
+    exec: string,
+    keywords: string,
+  }
+
+  get-trigger: func() -> string;
+
+  handle: func(input: string) -> list<action-item>;
+}
+
+world plugin-world {
+  export runner;
+}

@@ -32,10 +32,39 @@ git clone https://github.com/pezfisk/swift-launcher
 cd swift-launcher
 cargo build --release
 ./target/release/swift-launcher
-````
+```
 
 #### CONFIGURE ON DESKTOP ENVIROMENTS
- 
+
+## Plugin System
+
+Swift Launcher uses **WebAssembly (WASM) Components** for plugins, allowing you to write extensions in any language while maintaining security and performance.
+
+### Understanding WASM Architecture
+
+**📖 [Read WASM.md](./assets/WASM.md)** for a comprehensive explanation of:
+- What WASM is and why we use it
+- The Component Model and interfaces
+- Shift's WASM architecture and how plugins are loaded
+- Memory isolation and security guarantees
+- How information flows between host and plugins
+
+**Key benefits:**
+- **Polyglot**: Write plugins in Rust, Python, Go, JavaScript, C, Zig, and more
+- **Safe**: Each plugin runs in an isolated sandbox
+- **Fast**: Near-native performance (95%+ of native speed)
+- **Reliable**: One plugin crash doesn't crash Shift
+
+### Creating Your First Plugin
+
+**📖 [Read PLUGINS.md](./assets/PLUGINS.md)** for complete instructions on:
+- Building the echo plugin in **Rust**, **Python**, **Go**, **JavaScript**, **C/C++**, and **Zig**
+- How to target `wasm32-wasip2`
+- Installation and testing
+- Best practices for plugin development
+- Troubleshooting common issues
+
+
 ## Theming
 
 If no theme.conf exists at `/home/user/.config/swift/theme.conf` a default theme will be used
