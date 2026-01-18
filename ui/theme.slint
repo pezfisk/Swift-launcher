@@ -5,6 +5,8 @@ export global Theme {
 	
 	in-out property <color> background-color: #a1a1a1;
 	in-out property <length> border-radius: 15px;
+	in-out property <color> border-color: #2a2a2a;
+	in-out property <length> border-width: 2px;
 
 	// ACTION STUFF
 	in-out property <length> max-height: 60px;
@@ -13,6 +15,48 @@ export global Theme {
 	in-out property <length> option-border-radius: 8px;
 
 	in-out property <length> name-font-size: 16px;
+	in-out property <color> name-font-color: #0e0e0e;
+	in-out property <color> name-font-color-selected: #8e8e8e;
 	in-out property <length> exec-font-size: 12px;
+	in-out property <color> exec-font-color: #666;
+	in-out property <color> exec-font-color-selected;
 	in-out property <bool> exec-show: true;
+
+	// RUNNER
+	in-out property <length> runner-font-size: 16px;
+	in-out property <color> runner-background-color: #c1c1c1;
+	in-out property <color> runner-border-color: #0f0f0f;
+	in-out property <length> runner-border-width: 1px;
+	in-out property <length> runner-border-radius: 10px;
+	in-out property <length> runner-height: 40px;
+	in-out property <color> runner-color: #151515;
+	// in-out property <color> runner-background-color: #f1f1f1;
+}
+
+export component StyledInput inherits Rectangle {
+	in-out property <string> text <=> input.text;
+	background: Theme.runner-background-color;
+	border-color: Theme.runner-border-color;
+	border-width: Theme.runner-border-width;
+	border-radius: Theme.runner-border-radius;
+	height: Theme.runner-height;
+
+	callback edited(string);
+	callback accepted();
+	callback key-pressed(KeyEvent) -> EventResult;
+
+	forward-focus: input;
+
+	input := TextInput {
+		color: Theme.runner-color;
+		font-size: Theme.runner-font-size;
+		// selection-background-color: Theme.runner-background-color;
+		vertical-alignment: center;
+		width: 95%;
+		accessible-placeholder-text: "Type to search...";
+
+		edited => { root.edited(root.text) }
+		accepted => { root.accepted() }
+		key-pressed(event) => { root.key-pressed(event) }
+	}
 }

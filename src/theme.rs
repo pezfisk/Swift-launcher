@@ -39,12 +39,20 @@ pub fn apply_theme(ui: &LauncherWindow) -> Result<(), Box<dyn Error>> {
             set_if_present("width", &|v| theme.set_width(v));
             set_if_present("height", &|v| theme.set_height(v));
             set_if_present("border-radius", &|v| theme.set_border_radius(v));
+            set_if_present("border-width", &|v| theme.set_border_width(v));
 
-            if let Some(background_str) = section
+            if let Some(color_str) = section
                 .get("background-color")
                 .and_then(|c| parse_hex_color(c).ok())
             {
-                theme.set_background_color(background_str);
+                theme.set_background_color(color_str);
+            }
+
+            if let Some(color_str) = section
+                .get("border-color")
+                .and_then(|c| parse_hex_color(c).ok())
+            {
+                theme.set_border_color(color_str);
             }
         }
 
@@ -75,6 +83,30 @@ pub fn apply_theme(ui: &LauncherWindow) -> Result<(), Box<dyn Error>> {
             {
                 theme.set_option_color_selected(color_str);
             }
+            if let Some(color_str) = section
+                .get("name-font-color")
+                .and_then(|c| parse_hex_color(c).ok())
+            {
+                theme.set_name_font_color(color_str);
+            }
+            if let Some(color_str) = section
+                .get("name-font-color-selected")
+                .and_then(|c| parse_hex_color(c).ok())
+            {
+                theme.set_name_font_color_selected(color_str);
+            }
+            if let Some(color_str) = section
+                .get("exec-font-color")
+                .and_then(|c| parse_hex_color(c).ok())
+            {
+                theme.set_exec_font_color(color_str);
+            }
+            if let Some(color_str) = section
+                .get("exec-font-color-selected")
+                .and_then(|c| parse_hex_color(c).ok())
+            {
+                theme.set_exec_font_color_selected(color_str);
+            }
 
             // Parse booleans
             if let Some(show) = section
@@ -84,13 +116,49 @@ pub fn apply_theme(ui: &LauncherWindow) -> Result<(), Box<dyn Error>> {
                 theme.set_exec_show(show);
             }
         }
+
+        if let Some(section) = conf.section(Some("Runner")) {
+            let set_if_present = |key: &str, setter: &dyn Fn(f32)| {
+                if let Some(val) = section.get(key).and_then(|v| v.parse::<f32>().ok()) {
+                    setter(val);
+                }
+            };
+
+            set_if_present("font-size", &|v| theme.set_runner_font_size(v));
+            set_if_present("border-width", &|v| theme.set_runner_border_width(v));
+            set_if_present("border-radius", &|v| theme.set_runner_border_radius(v));
+            set_if_present("height", &|v| theme.set_runner_height(v));
+
+            if let Some(color_str) = section
+                .get("background-color")
+                .and_then(|c| parse_hex_color(c).ok())
+            {
+                theme.set_runner_background_color(color_str);
+            }
+            if let Some(color_str) = section
+                .get("border-color")
+                .and_then(|c| parse_hex_color(c).ok())
+            {
+                theme.set_runner_border_color(color_str);
+            }
+            if let Some(color_str) = section
+                .get("font-color")
+                .and_then(|c| parse_hex_color(c).ok())
+            {
+                theme.set_runner_color(color_str);
+            }
+        }
     }
 
     Ok(())
 }
 
-fn parse_hex_color(hex: &str) -> Result<Color, core::num::ParseIntError> {
+fn parse_hex_color(hex: &str) -> Result<Color, Box<dyn Error>> {
     let hex = hex.trim_start_matches('#');
+
+    if hex.len() != 6 {
+        return Err("Invalid hex length".into());
+    }
     let r = u8::from_str_radix(&hex[0..2], 16)?;
     let g = u8::from_str_radix(&hex[2..4], 16)?;
     let b = u8::from_str_radix(&hex[4..6], 16)?;

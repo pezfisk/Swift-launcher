@@ -39,26 +39,37 @@ cargo build --release
 ## Theming
 
 If no theme.conf exists at `/home/user/.config/swift/theme.conf` a default theme will be used
-Here are the different UI options you can change
+Here is an example theme.conf for reference:
 
 ```ini
 [Window]
 width=600
 height=400
+vertical-alignment=center
+horizontal-alignment=center
 background-color=#1e1e2e
-border-radius=20
+border-radius=16
+border-color=#74c7ec
+border-width=1
 
 [Action]
 max-height=60
-option-color=#585b70
+option-color=#313244
 option-color-selected=#cba6f7
-option-border-rodius=12
-
-name-font-size=16
+option-border-rodius=10
+name-font-size=14
 exec-font-size=11
 exec-show=false
 
-````
+[Runner]
+font-size=16
+background-color=#181825
+border-color=#45475a
+border-width=1
+border-radious=8
+height=45
+color=#cdd6f4
+```
 
 ## Configuration (Not yet implemented, just for reference)
 Default path:

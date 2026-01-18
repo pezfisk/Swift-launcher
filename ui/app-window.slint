@@ -1,5 +1,5 @@
 import { VerticalBox, HorizontalBox, LineEdit, ScrollView } from "std-widgets.slint";
-import { Theme } from "theme.slint";
+import { Theme, StyledInput } from "theme.slint";
 export { Theme }
 
 export struct ActionItem {
@@ -29,22 +29,26 @@ export component LauncherWindow inherits Window {
     Rectangle {
         background: Theme.background-color;
         border-radius: Theme.border-radius;
+        border-color: Theme.border-color;
+        border-width: Theme.border-width;
         
         VerticalBox {
             padding: 20px;
             spacing: 10px;
 
-            runner := LineEdit {
-                placeholder-text: "Type to search...";
-                text <=> search-text;
+            runner := StyledInput {
+                // font-size: 10px;
+                // horizontal-alignment: left; 
+                // placeholder-text: "Type to search...";
+                // text <=> search-text;
 
                 key-pressed(event) => {
                     if (event.text == Key.Escape) {
                         root.quit();
-                        return accept;
+                        return EventResult.accept;
                     }
 
-                    return reject;
+                    return EventResult.reject;
                 }
 
                 edited(text) => {
@@ -60,6 +64,7 @@ export component LauncherWindow inherits Window {
                 VerticalBox {
                     spacing: 5px;
                     for action[idx] in actions: Rectangle {
+                        // min-height: idx == 0 ? 60px : 40px;
                         max-height: Theme.max-height;
                         background: idx == 0 ? Theme.option-color-selected : Theme.option-color;
                         border-radius: Theme.option-border-radius;
@@ -76,12 +81,13 @@ export component LauncherWindow inherits Window {
                                 text: action.name;
                                 font-size: Theme.name-font-size;
                                 font-weight: 600;
+                                color: idx == 0 ? Theme.name-font-color-selected : Theme.name-font-color;
                                 wrap: word-wrap;
                             }
                             if (Theme.exec-show): Text {
                                 text: action.exec;
                                 font-size: Theme.exec-font-size;
-                                color: #666;
+                                color: idx == 0 ? Theme.exec-font-color-selected : Theme.exec-font-color;
                                 wrap: word-wrap;
 
                             }
