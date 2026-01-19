@@ -4,7 +4,7 @@
 #[rustfmt::skip]
 #[allow(dead_code, clippy::all)]
 pub mod exports {
-    pub mod shift {
+    pub mod swift {
         pub mod launcher {
             #[allow(dead_code, async_fn_in_trait, unused_imports, clippy::all)]
             pub mod runner {
@@ -167,26 +167,26 @@ pub mod exports {
                     fn handle(input: _rt::String) -> _rt::Vec<ActionItem>;
                 }
                 #[doc(hidden)]
-                macro_rules! __export_shift_launcher_runner_cabi {
+                macro_rules! __export_swift_launcher_runner_cabi {
                     ($ty:ident with_types_in $($path_to_types:tt)*) => {
                         const _ : () = { #[unsafe (export_name =
-                        "shift:launcher/runner#get-trigger")] unsafe extern "C" fn
+                        "swift:launcher/runner#get-trigger")] unsafe extern "C" fn
                         export_get_trigger() -> * mut u8 { unsafe { $($path_to_types)*::
                         _export_get_trigger_cabi::<$ty > () } } #[unsafe (export_name =
-                        "cabi_post_shift:launcher/runner#get-trigger")] unsafe extern "C"
+                        "cabi_post_swift:launcher/runner#get-trigger")] unsafe extern "C"
                         fn _post_return_get_trigger(arg0 : * mut u8,) { unsafe {
                         $($path_to_types)*:: __post_return_get_trigger::<$ty > (arg0) } }
-                        #[unsafe (export_name = "shift:launcher/runner#handle")] unsafe
+                        #[unsafe (export_name = "swift:launcher/runner#handle")] unsafe
                         extern "C" fn export_handle(arg0 : * mut u8, arg1 : usize,) -> *
                         mut u8 { unsafe { $($path_to_types)*:: _export_handle_cabi::<$ty
                         > (arg0, arg1) } } #[unsafe (export_name =
-                        "cabi_post_shift:launcher/runner#handle")] unsafe extern "C" fn
+                        "cabi_post_swift:launcher/runner#handle")] unsafe extern "C" fn
                         _post_return_handle(arg0 : * mut u8,) { unsafe {
                         $($path_to_types)*:: __post_return_handle::<$ty > (arg0) } } };
                     };
                 }
                 #[doc(hidden)]
-                pub(crate) use __export_shift_launcher_runner_cabi;
+                pub(crate) use __export_swift_launcher_runner_cabi;
                 #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
                 #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
                 struct _RetArea(
@@ -252,15 +252,15 @@ macro_rules! __export_plugin_world_impl {
     };
     ($ty:ident with_types_in $($path_to_types_root:tt)*) => {
         $($path_to_types_root)*::
-        exports::shift::launcher::runner::__export_shift_launcher_runner_cabi!($ty
-        with_types_in $($path_to_types_root)*:: exports::shift::launcher::runner);
+        exports::swift::launcher::runner::__export_swift_launcher_runner_cabi!($ty
+        with_types_in $($path_to_types_root)*:: exports::swift::launcher::runner);
     };
 }
 #[doc(inline)]
 pub(crate) use __export_plugin_world_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[unsafe(
-    link_section = "component-type:wit-bindgen:0.41.0:shift:launcher:plugin-world:encoded world"
+    link_section = "component-type:wit-bindgen:0.41.0:swift:launcher:plugin-world:encoded world"
 )]
 #[doc(hidden)]
 #[allow(clippy::octal_escapes)]
@@ -268,7 +268,7 @@ pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 287] = *b"\
 \0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x9c\x01\x01A\x02\x01\
 A\x02\x01B\x07\x01r\x03\x04names\x04execs\x08keywordss\x04\0\x0baction-item\x03\0\
 \0\x01@\0\0s\x04\0\x0bget-trigger\x01\x02\x01p\x01\x01@\x01\x05inputs\0\x03\x04\0\
-\x06handle\x01\x04\x04\0\x15shift:launcher/runner\x05\0\x04\0\x1bshift:launcher/\
+\x06handle\x01\x04\x04\0\x15swift:launcher/runner\x05\0\x04\0\x1bswift:launcher/\
 plugin-world\x04\0\x0b\x12\x01\0\x0cplugin-world\x03\0\0\0G\x09producers\x01\x0c\
 processed-by\x02\x0dwit-component\x070.227.1\x10wit-bindgen-rust\x060.41.0";
 #[inline(never)]

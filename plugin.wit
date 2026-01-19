@@ -1,4 +1,4 @@
-package shift:launcher;
+package swift:launcher;
 
 interface runner {
   record action-item {

@@ -10,6 +10,7 @@ nohup.out
 build-dir
 cargo-sources.json
 /modules/calc-plugin/target
+tags*
 
 # Added by cargo
 #

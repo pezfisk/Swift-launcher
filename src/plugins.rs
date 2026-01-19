@@ -4,6 +4,7 @@ use std::option::Option;
 use wasmtime::component::{bindgen, Component, Linker, ResourceTable};
 use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
+use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 bindgen!({ world: "plugin-world", path: "plugin.wit" });
 
@@ -11,6 +12,7 @@ static BUILTIN_PLUGINS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/built_in_plu
 
 pub struct MyState {
     wasi: WasiCtx,
+    http_ctx: WasiHttpCtx,
     table: ResourceTable,
 }
 pub struct PluginManager {
@@ -27,6 +29,16 @@ impl WasiView for MyState {
         }
     }
 }
+impl WasiHttpView for MyState {
+    fn ctx(&mut self) -> &mut WasiHttpCtx {
+        &mut self.http_ctx
+    }
+
+    fn table(&mut self) -> &mut ResourceTable {
+        &mut self.table
+    }
+}
+
 impl PluginManager {
     pub fn new() -> Self {
         let mut config = Config::new();
@@ -36,6 +48,8 @@ impl PluginManager {
 
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::p2::add_to_linker_sync(&mut linker).expect("Failed to add WASI");
+        wasmtime_wasi_http::add_only_http_to_linker_sync(&mut linker)
+            .expect("Failed to add WASI_HTTP");
         Self {
             engine: engine.clone(),
             linker: linker,
@@ -69,7 +83,7 @@ impl PluginManager {
         let component = Component::from_binary(&self.engine, bytes)?;
         let mut store = self.create_store();
         let world = PluginWorld::instantiate(&mut store, &component, &self.linker)?;
-        if let Ok(t) = world.shift_launcher_runner().call_get_trigger(&mut store) {
+        if let Ok(t) = world.swift_launcher_runner().call_get_trigger(&mut store) {
             if let Some(c) = t.chars().next() {
                 self.plugins.insert(c, component);
             }
@@ -81,12 +95,12 @@ impl PluginManager {
         &self,
         trigger: char,
         input: &str,
-    ) -> Option<Vec<exports::shift::launcher::runner::ActionItem>> {
+    ) -> Option<Vec<exports::swift::launcher::runner::ActionItem>> {
         let comp = self.plugins.get(&trigger)?;
         let mut store = self.create_store();
         let world = PluginWorld::instantiate(&mut store, comp, &self.linker).ok()?;
         world
-            .shift_launcher_runner()
+            .swift_launcher_runner()
             .call_handle(&mut store, input)
             .ok()
     }
@@ -105,6 +119,7 @@ impl PluginManager {
             &self.engine,
             MyState {
                 wasi: builder.build(),
+                http_ctx: WasiHttpCtx::new(),
                 table: ResourceTable::new(),
             },
         )

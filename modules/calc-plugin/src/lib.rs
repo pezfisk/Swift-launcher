@@ -1,4 +1,4 @@
-use bindings::exports::shift::launcher::runner::{ActionItem, Guest};
+use bindings::exports::swift::launcher::runner::{ActionItem, Guest};
 mod bindings;
 
 struct Calculator;

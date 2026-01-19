@@ -102,7 +102,7 @@ cd echo-plugin
 [package]
 name = "echo-plugin"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
@@ -121,6 +121,7 @@ world = "plugin-world"
 #### src/lib.rs
 ```rust
 use bindings::exports::swift::launcher::runner::{ActionItem, Guest};
+mod bindings;
 
 struct Echo;
 
@@ -169,7 +170,7 @@ from typing import List
 from wit_world import exports
 from wit_world.exports import runner
 
-class runner:
+class Runner:
     def get_trigger(self) -> str:
         return ">"
     
@@ -193,64 +194,64 @@ cp echo.wasm ~/.config/swift/plugins/
 
 ---
 
-### Go (TinyGo)
+<!-- ### Go (TinyGo) -->
 
-#### Installation
-```bash
-# Install TinyGo (not standard Go)
-# macOS: brew install tinygo
-# Linux: https://tinygo.org/getting-started/install/
+<!-- #### Installation -->
+<!-- ```bash -->
+<!-- # Install TinyGo (not standard Go) -->
+<!-- # macOS: brew install tinygo -->
+<!-- # Linux: https://tinygo.org/getting-started/install/ -->
 
-go install github.com/bytecodealliance/wit-bindgen-go/cmd/wit-bindgen-go@latest
-```
+<!-- go install github.com/bytecodealliance/wit-bindgen-go/cmd/wit-bindgen-go@latest -->
+<!-- ``` -->
 
-#### Generate Bindings
-```bash
-wit-bindgen-go generate plugin.wit
-```
+<!-- #### Generate Bindings -->
+<!-- ```bash -->
+<!-- wit-bindgen-go generate plugin.wit -->
+<!-- ``` -->
 
-#### echo.go
-```go
-package main
+<!-- #### echo.go -->
+<!-- ```go -->
+<!-- package main -->
 
-import (
-    "strings"
-    gen "gen"  // Generated bindings package
-)
+<!-- import ( -->
+    <!-- "strings" -->
+    <!-- gen "gen"  // Generated bindings package -->
+<!-- ) -->
 
-type EchoPlugin struct{}
+<!-- type EchoPlugin struct{} -->
 
-func (e EchoPlugin) GetTrigger() string {
-    return ">"
-}
+<!-- func (e EchoPlugin) GetTrigger() string { -->
+    <!-- return ">" -->
+<!-- } -->
 
-func (e EchoPlugin) Handle(input string) []gen.ActionItem {
-    cleaned := strings.TrimPrefix(strings.TrimSpace(input), ">")
-    cleaned = strings.TrimSpace(cleaned)
+<!-- func (e EchoPlugin) Handle(input string) []gen.ActionItem { -->
+    <!-- cleaned := strings.TrimPrefix(strings.TrimSpace(input), ">") -->
+    <!-- cleaned = strings.TrimSpace(cleaned) -->
     
-    return []gen.ActionItem{
-        {
-            Name:     "You typed: " + cleaned,
-            Exec:     "",
-            Keywords: ">",
-        },
-    }
-}
+    <!-- return []gen.ActionItem{ -->
+        <!-- { -->
+            <!-- Name:     "You typed: " + cleaned, -->
+            <!-- Exec:     "", -->
+            <!-- Keywords: ">", -->
+        <!-- }, -->
+    <!-- } -->
+<!-- } -->
 
-func init() {
-    gen.SetExportsSoftwareLauncherRunner(EchoPlugin{})
-}
+<!-- func init() { -->
+    <!-- gen.SetExportsSoftwareLauncherRunner(EchoPlugin{}) -->
+<!-- } -->
 
-func main() {}
-```
+<!-- func main() {} -->
+<!-- ``` -->
 
-#### Build & Install
-```bash
-tinygo build -target=wasip2 -o echo.wasm echo.go
-cp echo.wasm ~/.config/swift/plugins/
-```
+<!-- #### Build & Install -->
+<!-- ```bash -->
+<!-- tinygo build -target=wasip2 -o echo.wasm echo.go -->
+<!-- cp echo.wasm ~/.config/swift/plugins/ -->
+<!-- ``` -->
 
-**Note:** Use TinyGo (not standard Go). Standard Go runtime is too heavy for WASM.
+<!-- **Note:** Use TinyGo (not standard Go). Standard Go runtime is too heavy for WASM. -->
 
 ---
 
@@ -258,14 +259,12 @@ cp echo.wasm ~/.config/swift/plugins/
 
 #### Installation
 ```bash
-npm install -g @bytecodealliance/jco
-# or
-jco --version  # verify
+npm install -g @bytecodealliance/jco @bytecodealliance/componentize-js @bytecodealliance/preview2-shim
 ```
 
 #### echo.js
 ```javascript
-export const getSoftwareLauncherRunner = () => ({
+export const runner = {
   getTrigger() {
     return ">";
   },
@@ -278,20 +277,20 @@ export const getSoftwareLauncherRunner = () => ({
       keywords: ">"
     }];
   }
-});
+};
 ```
 
 #### Build & Install
 ```bash
-jco componentize echo.js --wit plugin.wit -o echo.wasm
+jco componentize echo.js --wit plugin.wit -n plugin-world -o echo.wasm
 cp echo.wasm ~/.config/swift/plugins/
 ```
 
-**Note:** Experimental tooling. Great if you want to reuse npm packages. Can import npm modules in your plugin code.
+**Note:** Experimental tooling. Great if you want to reuse npm packages. Can import npm modules in your plugin code. Also slow like Python.
 
 ---
 
-### C/C++ (Legacy Code Integration)
+### C/C++ -- Haven't tested yet!
 
 #### Installation
 ```bash
@@ -363,45 +362,47 @@ cp echo.wasm ~/.config/swift/plugins/
 
 ---
 
-### Zig (Modern Systems Language)
+<!-- ### Zig (Modern Systems Language) -->
 
-#### Installation
-```bash
-# Install Zig from https://ziglang.org/download
-zig --version  # Should be 0.13+
+<!-- #### Installation -->
+<!-- ```bash -->
+<!-- # Install Zig from https://ziglang.org/download -->
+<!-- zig --version  # Should be 0.13+ -->
 
-# Install wit-bindgen for Zig
-# (Still in early development)
-```
+<!-- # Install wit-bindgen for Zig -->
+<!-- # (Still in early development) -->
+<!-- ``` -->
 
-#### echo.zig
-```zig
-const std = @import("std");
+<!-- #### echo.zig -->
+<!-- ```zig -->
+<!-- const std = @import("std"); -->
 
-pub fn getTrigger() ![]u8 {
-    return ">";
-}
+<!-- pub fn getTrigger() ![]u8 { -->
+    <!-- return ">"; -->
+<!-- } -->
 
-pub fn handle(input: []u8) ![]u8 {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    var allocator = gpa.allocator();
+<!-- pub fn handle(input: []u8) ![]u8 { -->
+    <!-- var gpa = std.heap.GeneralPurposeAllocator(.{}){}; -->
+    <!-- defer _ = gpa.deinit(); -->
+    <!-- const allocator = gpa.allocator(); -->
     
-    const cleaned = std.mem.trim(u8, input, "> \t\n");
-    const result = try std.fmt.allocPrint(allocator, "You typed: {s}", .{cleaned});
+    <!-- const cleaned = std.mem.trim(u8, input, "> \t\n"); -->
+    <!-- const result = try std.fmt.allocPrint(allocator, "You typed: {s}", .{cleaned}); -->
     
-    return result;
-}
-```
+    <!-- return result; -->
+<!-- } -->
+<!-- ``` -->
 
-#### Build & Install
-```bash
-zig build-lib echo.zig -target wasm32-wasip2 -dynamic
-wasm-tools component new echo.wasm -o echo-component.wasm
-cp echo-component.wasm ~/.config/swift/plugins/
-```
+<!-- #### Build & Install -->
+<!-- ```bash -->
+<!-- zig build-exe echo.zig -target wasm32-wasi -O ReleaseSmall -fno-entry -rdynamic --export-table --name echo-core -->
+<!-- wasm-tools component embed plugin.wit echo-core.wasm -o echo-embeded.wasm -->
+<!-- wget https://github.com/bytecodealliance/wasmtime/releases/tag/v40.0.2/wasi_snapshot_preview1.reactor.wasm -->
+<!-- wasm-tools component new echo.wasm -o echo-component.wasm -->
+<!-- cp echo-component.wasm ~/.config/swift/plugins/ -->
+<!-- ``` -->
 
-**Note:** Zig tooling for WASM components is still developing.
+<!-- **Note:** Zig tooling for WASM components is still developing. -->
 
 ---
 

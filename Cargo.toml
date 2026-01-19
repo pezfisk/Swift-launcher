@@ -12,10 +12,10 @@ spell-framework = "1.0.1"
 rust-ini = "0.21.3"
 fuzzy-matcher = "0.3.7"
 regex = "1.12.2"
-evalexpr = "13.1.0"
 wasmtime = "40.0.2"
 wasmtime-wasi = "40.0.2"
 include_dir = "0.7.4"
+wasmtime-wasi-http = "40.0.2"
 
 [build-dependencies]
 slint-build = "1.14.1"

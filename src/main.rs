@@ -10,8 +10,6 @@ use std::rc::Rc;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 
-use evalexpr::*;
-
 use spell_framework::{
     cast_spell,
     layer_properties::{BoardType, LayerAnchor, LayerType, WindowConf},
@@ -110,7 +108,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
 
-                let new_model: Vec<ActionItem> = filtered.into_iter().map(|(_, item)| item).collect();
+                let new_model: Vec<ActionItem> =
+                    filtered.into_iter().map(|(_, item)| item).collect();
                 display_model.set_vec(new_model);
             }
         }
