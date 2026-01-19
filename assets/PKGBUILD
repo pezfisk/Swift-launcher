@@ -1,0 +1,13 @@
+pkgname=swift-launcher
+pkgver=${_pkgver}
+pkgrel=1
+pkgdesc="A fast launcher written in Rust with Qt6 backend"
+arch=('x86_64')
+license=('GPL')
+depends=('qt6-base' 'qt6-wayland' 'wl-clipboard') 
+provides=('swift-launcher')
+
+package() {
+    install -Dm755 "${srcdir}/../../target/release/Swift-launcher" "${pkgdir}/usr/bin/swift-launcher"
+}
+

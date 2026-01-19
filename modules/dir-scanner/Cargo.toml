@@ -1,0 +1,16 @@
+[package]
+name = "dir_scanner"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+evalexpr = "13.1.0"
+fuzzy-matcher = "0.3.7"
+wit-bindgen-rt = "0.44.0"
+
+[package.metadata.component.target]
+path = "../../plugin.wit"
+world = "plugin-world"

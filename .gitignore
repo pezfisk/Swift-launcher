@@ -9,7 +9,7 @@ nohup.out
 .flatpak-builder
 build-dir
 cargo-sources.json
-/modules/calc-plugin/target
+/modules/*/target
 tags*
 
 # Added by cargo

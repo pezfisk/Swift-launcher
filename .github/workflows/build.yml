@@ -95,29 +95,34 @@ jobs:
       - name: Install build dependencies
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel rust cargo qt6-base mesa
+          pacman -S --noconfirm base-devel rust cargo qt6-base mesa qt6-wayland wl-clipboard
       
       - name: Build release binary
         run: cargo build --release --locked
+
+      - name: Get version from Cargo.toml
+        run: |
+          VERSION=$(grep '^version =' Cargo.toml | head -1 | sed -E 's/version = "(.*)"/\1/')
+
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
       
-      - name: Create package structure
+      - name: Package with makepkg
         run: |
-          mkdir -p package/usr/bin
-          mkdir -p package/usr/share/doc/${{ env.APP_NAME }}
-          cp target/release/${{ env.BINARY_NAME }} package/usr/bin/
-          strip package/usr/bin/${{ env.BINARY_NAME }} || true
-          
-      - name: Create pkg.tar.gz
-        run: |
-          cd package
-          tar czf ../${{ env.APP_NAME }}-x86_64.pkg.tar.gz usr/
-          cd ..
+          useradd -m builduser
+          chown -R builduser:builduser .
+        
+          sed -i "s/\${_pkgver}/${{ env.APP_VERSION }}/g" assets/PKGBUILD
+        
+          cd assets
+          sudo -u builduser bash -c "export PKGEXT='.pkg.tar.zst'; makepkg -fp PKGBUILD -e"
+
+          mv *.pkg.tar.zst ../
       
       - name: Upload Arch artifact
         uses: actions/upload-artifact@v4
         with:
           name: arch-package
-          path: ${{ env.APP_NAME }}-x86_64.pkg.tar.gz
+          path: "*.pkg.tar.zst"
 
   build-appimage:
     name: Build AppImage

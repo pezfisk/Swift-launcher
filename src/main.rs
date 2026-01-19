@@ -72,14 +72,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
+    let matcher = SkimMatcherV2::default();
     ui.on_search_changed(move |text: slint::SharedString| {
         let query = text.as_str().trim();
-        let matcher = SkimMatcherV2::default();
 
         if query.is_empty() {
             display_model.set_vec(master_list.clone());
             return;
         }
+        println!("Search changed!");
 
         if let Some(first_char) = query.chars().next() {
             if let Some(res) = manager.run_trigger(first_char, query) {
@@ -94,7 +95,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 display_model.set_vec(items);
                 return;
             } else {
-                let mut filtered: Vec<(i64, ActionItem)> = display_model
+                let mut filtered: Vec<(i64, ActionItem)> = master_list
                     .iter()
                     .filter_map(|item| {
                         let score = matcher
