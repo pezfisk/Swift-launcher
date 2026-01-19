@@ -160,20 +160,22 @@ pip install componentize-py
 #### Generate Bindings
 ```bash
 # Copy plugin.wit to your project directory
-componentize-py -d plugin.wit -w plugin-world bindings echo_bindings
+componentize-py -d plugin.wit -w plugin-world bindings .
 ```
 
 #### echo.py
 ```python
-from echo_bindings.exports.swift.launcher.runner import Runner, ActionItem
+from typing import List
+from wit_world import exports
+from wit_world.exports import runner
 
-class Echo(Runner):
+class runner:
     def get_trigger(self) -> str:
         return ">"
     
-    def handle(self, input: str) -> list[ActionItem]:
+    def handle(self, input: str) -> List[runner.ActionItem]:
         cleaned = input.lstrip(">").strip()
-        return [ActionItem(
+        return [runner.ActionItem(
             name=f"You typed: {cleaned}",
             exec="",
             keywords=">"
