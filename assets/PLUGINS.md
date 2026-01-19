@@ -1,4 +1,4 @@
-# Creating Swift Launcher Plugins for WASM -- PLUGIN TESTING NOT DONE YET!
+# Creating Swift Launcher Plugins for WASM
 
 ## Table of Contents
 1. [Quick Start](#quick-start)
