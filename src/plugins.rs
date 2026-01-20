@@ -1,10 +1,13 @@
 use include_dir::{include_dir, Dir};
 use std::collections::HashMap;
 use std::option::Option;
+use std::path::PathBuf;
 use wasmtime::component::{bindgen, Component, Linker, ResourceTable};
 use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
+
+use rayon::{current_thread_index, prelude};
 
 bindgen!({ world: "plugin-world", path: "plugin.wit" });
 
@@ -58,9 +61,13 @@ impl PluginManager {
     }
 
     pub fn load_all(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut plugin_sources = Vec::new();
+
         // 1. Load Built-ins (from memory)
         for file in BUILTIN_PLUGINS.files() {
-            self.register(file.contents())?;
+            // println!("Loading: {:?}", file);
+            // self.register(file.contents())?;
+            plugin_sources.push((file.path().to_path_buf(), file.contents().to_vec()))
         }
         // 2. Load User Plugins (from disk)
         let user_path = format!(
@@ -69,18 +76,47 @@ impl PluginManager {
                 .unwrap_or_else(|_| format!("{}/.config", std::env::var("HOME").unwrap()))
         );
 
-        if let Ok(entries) = std::fs::read_dir(user_path) {
+        if let Ok(entries) = std::fs::read_dir(&user_path) {
             for entry in entries.flatten() {
-                if entry.path().extension().and_then(|s| s.to_str()) == Some("wasm") {
-                    self.register(&std::fs::read(entry.path())?)?;
+                // println!("Loading {:?}", entry);
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("wasm") {
+                    // println!("Loaded");
+                    // self.register(&std::fs::read(entry.path())?)?;
+                    plugin_sources.push((path, std::fs::read(entry.path())?))
                 }
             }
         }
+
+        let engine = self.engine.clone();
+        let compiled_results: Vec<_> = plugin_sources
+            .into_iter()
+            .map(|(path, bytes)| {
+                println!("Processing {:?} at {:?}", path, current_thread_index());
+                let path = PathBuf::from(format!("{}/{}", user_path, path.display()));
+                let cwasm_path = path.with_extension("cwasm");
+
+                if cwasm_path.exists() {
+                    println!("Using cwasm");
+                    unsafe { Component::deserialize_file(&engine, &cwasm_path) }
+                } else {
+                    println!("Compiling module");
+                    let component = Component::from_binary(&engine, &bytes)?;
+
+                    let _ = std::fs::write(cwasm_path, engine.precompile_component(&bytes)?);
+                    Ok(component)
+                }
+            })
+            .collect();
+
+        for result in compiled_results {
+            self.register(result?)?;
+        }
+
         Ok(())
     }
 
-    fn register(&mut self, bytes: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
-        let component = Component::from_binary(&self.engine, bytes)?;
+    fn register(&mut self, component: Component) -> Result<(), Box<dyn std::error::Error>> {
         let mut store = self.create_store();
         let world = PluginWorld::instantiate(&mut store, &component, &self.linker)?;
         if let Ok(t) = world.swift_launcher_runner().call_get_trigger(&mut store) {

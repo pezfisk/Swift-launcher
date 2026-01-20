@@ -8,6 +8,7 @@ version = "0.2.0"
 dependencies = [
  "fuzzy-matcher",
  "include_dir",
+ "rayon",
  "regex",
  "rust-ini",
  "slint",

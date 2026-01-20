@@ -1,6 +1,7 @@
 slint::include_modules!();
 
 use ini::Ini;
+use rayon::prelude;
 use slint::{Model, ModelRc, VecModel};
 use std::error::Error;
 use std::fs;
@@ -52,9 +53,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let manager = Arc::new(Mutex::new(plugins::PluginManager::new()));
     let manager_bg = Arc::clone(&manager);
 
-    thread::spawn(move || {
+    rayon::spawn(move || {
         let mut mg = manager_bg.lock().unwrap();
-
         if let Err(e) = mg.load_all() {
             eprintln!("Failed to load plugins: {}", e);
         }
