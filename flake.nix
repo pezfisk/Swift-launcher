@@ -32,6 +32,7 @@
           buildInputs = [
             rustToolChain
             cargo-component
+            cargo-bloat
             wasmtime
             rustfmt
             pre-commit
@@ -42,12 +43,14 @@
             qt6.qtbase
             pkg-config
             pam
+            upx
             rust-analyzer
             lldb_20
             slint-lsp
             flatpak-builder
             flatpak-xdg-utils
             appstream
+            act
           ];
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
 

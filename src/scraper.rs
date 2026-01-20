@@ -66,7 +66,7 @@ fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
 
                 if desktop_type == "Application" {
                     // println!(
-                    //     "Flatpak found! Name: {} -- Exec: {}",
+                    //     "desktop app found! Name: {} -- Exec: {}",
                     //     desktop_name, desktop_command
                     // );
 

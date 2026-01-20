@@ -24,13 +24,16 @@ jobs:
       - name: Install Qt6 dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qt6-base-dev libqt6gui6 libqt6widgets6 libgl1-mesa-dev libxkbcommon-x11-dev libpam0g-dev
+          sudo apt-get install -y qt6-base-dev libqt6gui6 libqt6widgets6 libgl1-mesa-dev libxkbcommon-x11-dev libpam0g-dev upx-ucl
       
       - name: Install cargo-deb
         run: cargo install cargo-deb
       
       - name: Build release binary
         run: cargo build --release --locked
+
+      - name: Compress with upx
+        run: upx --best --lzma target/release/${{ env.BINARY_NAME }}
       
       - name: Create DEB package
         run: cargo deb --no-build --no-strip
@@ -56,7 +59,7 @@ jobs:
       
       - name: Install build dependencies
         run: |
-          dnf install -y curl gcc gcc-c++ cmake pkg-config rpm-build qt6-qtbase-devel mesa-libGL-devel rust-yeslogic-fontconfig-sys-devel pam pam-devel
+          dnf install -y curl gcc gcc-c++ cmake pkg-config rpm-build qt6-qtbase-devel mesa-libGL-devel rust-yeslogic-fontconfig-sys-devel pam pam-devel upx
 
       - name: Install cargo
         run: curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
@@ -69,6 +72,9 @@ jobs:
       
       - name: Build release binary
         run: cargo build --release --locked
+
+      - name: Compress with upx
+        run: upx --best --lzma target/release/${{ env.BINARY_NAME }}
       
       - name: Generate RPM
         run: cargo generate-rpm
@@ -95,11 +101,14 @@ jobs:
       - name: Install build dependencies
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel rust cargo qt6-base mesa qt6-wayland wl-clipboard
+          pacman -S --noconfirm base-devel rust cargo qt6-base mesa qt6-wayland wl-clipboard upx
       
       - name: Build release binary
         run: cargo build --release --locked
 
+      - name: Compress binary with upx
+        run: upx --best --lzma target/releases/${{ env.BINARY_NAME }}
+      
       - name: Get version from Cargo.toml
         run: |
           VERSION=$(grep '^version =' Cargo.toml | head -1 | sed -E 's/version = "(.*)"/\1/')
@@ -135,8 +144,8 @@ jobs:
       - name: Install Qt6 and dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qt6-base-dev libqt6gui6 libqt6widgets6 libgl1-mesa-dev \
-            file libfuse2 libxkbcommon-x11-dev libpam0g-dev      
+          sudo apt-get install -y qt6-base-dev libqt6gui6 libqt6widgets6 libgl1-mesa-dev file libfuse2 libxkbcommon-x11-dev libpam0g-dev upx-ucl
+
       - name: Download linuxdeploy tools
         run: |
           wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
@@ -145,6 +154,9 @@ jobs:
       
       - name: Build release binary
         run: cargo build --release --locked
+
+      - name: Compress with upx
+        run: upx --best --lzma target/releases/${{ env.BINARY_NAME }}
       
       - name: Strip binary
         run: strip target/release/${{ env.BINARY_NAME }}

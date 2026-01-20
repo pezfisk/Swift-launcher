@@ -6,6 +6,8 @@ use std::error::Error;
 use std::fs;
 use std::process::Command;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
@@ -47,12 +49,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     let ui = LauncherWindow::new()?;
     let theme = theme::apply_theme(&ui);
 
-    let mut manager = plugins::PluginManager::new();
-    manager.load_all()?;
+    let manager = Arc::new(Mutex::new(plugins::PluginManager::new()));
+    let manager_bg = Arc::clone(&manager);
+
+    thread::spawn(move || {
+        let mut mg = manager_bg.lock().unwrap();
+
+        if let Err(e) = mg.load_all() {
+            eprintln!("Failed to load plugins: {}", e);
+        }
+    });
+    // manager.load_all()?;
 
     // TOOD: Need to properly handle Option<>
     let all_actions = scraper::get_programs().unwrap();
-    println!("{:?}", all_actions);
+    // println!("{:?}", all_actions);
 
     // Create action model
     let ui_actions = Rc::new(VecModel::<ActionItem>::default());
@@ -83,35 +94,37 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("Search changed!");
 
         if let Some(first_char) = query.chars().next() {
-            if let Some(res) = manager.run_trigger(first_char, query) {
-                let items: Vec<ActionItem> = res
-                    .into_iter()
-                    .map(|item| ActionItem {
-                        name: item.name.into(),
-                        exec: item.exec.into(),
-                        keywords: item.keywords.into(),
-                    })
-                    .collect();
-                display_model.set_vec(items);
-                return;
-            } else {
-                let mut filtered: Vec<(i64, ActionItem)> = master_list
-                    .iter()
-                    .filter_map(|item| {
-                        let score = matcher
-                            .fuzzy_match(&item.name, &text)
-                            .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
-                            .or_else(|| matcher.fuzzy_match(&item.exec, &text));
+            if let Ok(mg) = manager.try_lock() {
+                if let Some(res) = mg.run_trigger(first_char, query) {
+                    let items: Vec<ActionItem> = res
+                        .into_iter()
+                        .map(|item| ActionItem {
+                            name: item.name.into(),
+                            exec: item.exec.into(),
+                            keywords: item.keywords.into(),
+                        })
+                        .collect();
+                    display_model.set_vec(items);
+                    return;
+                } else {
+                    let mut filtered: Vec<(i64, ActionItem)> = master_list
+                        .iter()
+                        .filter_map(|item| {
+                            let score = matcher
+                                .fuzzy_match(&item.name, &text)
+                                .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
+                                .or_else(|| matcher.fuzzy_match(&item.exec, &text));
 
-                        score.map(|s| (s, item.clone()))
-                    })
-                    .collect();
+                            score.map(|s| (s, item.clone()))
+                        })
+                        .collect();
 
-                filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+                    filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
 
-                let new_model: Vec<ActionItem> =
-                    filtered.into_iter().map(|(_, item)| item).collect();
-                display_model.set_vec(new_model);
+                    let new_model: Vec<ActionItem> =
+                        filtered.into_iter().map(|(_, item)| item).collect();
+                    display_model.set_vec(new_model);
+                }
             }
         }
     });
@@ -129,7 +142,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         move || {
             let ui = ui_handle.unwrap();
-            if let Some(first_item) = ui_actions_clone.row_data(0) {
+            let selected = ui.get_selected();
+            if let Some(first_item) = ui_actions_clone.row_data(selected.try_into().unwrap()) {
                 println!("Launching: {}", first_item.name);
 
                 let _ = Command::new("sh").arg("-c").arg(&first_item.exec).spawn();

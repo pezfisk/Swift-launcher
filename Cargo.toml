@@ -7,15 +7,22 @@ description = "Fast, light and native launcher"
 license = "GPLv3"
 
 [dependencies]
-slint = "1.14.1"
+slint = { version = "1.14.1", default-features = false, features = ["backend-qt", "renderer-software"] }
 spell-framework = "1.0.1"
 rust-ini = "0.21.3"
 fuzzy-matcher = "0.3.7"
-regex = "1.12.2"
-wasmtime = "40.0.2"
-wasmtime-wasi = "40.0.2"
+regex = { version = "1.12.2", default-features = false, features = ["std", "perf"] }
+wasmtime = { version = "40.0.2", default-features = false, features = ["cranelift", "runtime", "component-model"] }
+wasmtime-wasi = { version = "40.0.2", default-features = false }
 include_dir = "0.7.4"
 wasmtime-wasi-http = "40.0.2"
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
 
 [build-dependencies]
 slint-build = "1.14.1"
