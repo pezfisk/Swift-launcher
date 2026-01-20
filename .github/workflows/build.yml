@@ -193,7 +193,7 @@ jobs:
       - name: Organize release files
         run: |
           mkdir -p release
-          find artifacts -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.pkg.tar.zst" -name "*.AppImage" \) -exec cp {} release/ \;
+          find artifacts -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.pkg.tar.zst" -o -name "*.AppImage" \) -exec cp {} release/ \;
           ls -lh release/
       
       - name: Create Release
