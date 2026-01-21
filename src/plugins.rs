@@ -1,13 +1,13 @@
-use include_dir::{include_dir, Dir};
+use include_dir::{Dir, include_dir};
 use std::collections::HashMap;
 use std::option::Option;
 use std::path::PathBuf;
-use wasmtime::component::{bindgen, Component, Linker, ResourceTable};
+use wasmtime::component::{Component, Linker, ResourceTable, bindgen};
 use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-use rayon::{current_thread_index, prelude};
+use rayon::current_thread_index;
 
 bindgen!({ world: "plugin-world", path: "plugin.wit" });
 
@@ -55,7 +55,7 @@ impl PluginManager {
             .expect("Failed to add WASI_HTTP");
         Self {
             engine: engine.clone(),
-            linker: linker,
+            linker,
             plugins: HashMap::new(),
         }
     }
@@ -63,18 +63,21 @@ impl PluginManager {
     pub fn load_all(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut plugin_sources = Vec::new();
 
-        // 1. Load Built-ins (from memory)
-        for file in BUILTIN_PLUGINS.files() {
-            // println!("Loading: {:?}", file);
-            // self.register(file.contents())?;
-            plugin_sources.push((file.path().to_path_buf(), file.contents().to_vec()))
-        }
         // 2. Load User Plugins (from disk)
         let user_path = format!(
             "{}/swift/plugins",
             std::env::var("XDG_CONFIG_HOME")
                 .unwrap_or_else(|_| format!("{}/.config", std::env::var("HOME").unwrap()))
         );
+
+        for file in BUILTIN_PLUGINS.files() {
+            // println!("Loading: {:?}", file);
+            // self.register(file.contents())?;
+
+            // println!("{:?}", file.path());
+            let path = PathBuf::from(format!("{}/{}", user_path, file.path().display()));
+            plugin_sources.push((path.to_path_buf(), file.contents().to_vec()))
+        }
 
         if let Ok(entries) = std::fs::read_dir(&user_path) {
             for entry in entries.flatten() {
@@ -93,7 +96,6 @@ impl PluginManager {
             .into_iter()
             .map(|(path, bytes)| {
                 println!("Processing {:?} at {:?}", path, current_thread_index());
-                let path = PathBuf::from(format!("{}/{}", user_path, path.display()));
                 let cwasm_path = path.with_extension("cwasm");
 
                 if cwasm_path.exists() {
@@ -119,11 +121,10 @@ impl PluginManager {
     fn register(&mut self, component: Component) -> Result<(), Box<dyn std::error::Error>> {
         let mut store = self.create_store();
         let world = PluginWorld::instantiate(&mut store, &component, &self.linker)?;
-        if let Ok(t) = world.swift_launcher_runner().call_get_trigger(&mut store) {
-            if let Some(c) = t.chars().next() {
+        if let Ok(t) = world.swift_launcher_runner().call_get_trigger(&mut store)
+            && let Some(c) = t.chars().next() {
                 self.plugins.insert(c, component);
             }
-        }
         Ok(())
     }
 

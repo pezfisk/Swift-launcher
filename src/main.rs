@@ -1,33 +1,23 @@
 slint::include_modules!();
 
-use ini::Ini;
-use rayon::prelude;
 use slint::{Model, ModelRc, VecModel};
 use std::error::Error;
-use std::fs;
 use std::process::Command;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use std::thread;
 
-use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::skim::SkimMatcherV2;
 
 use spell_framework::{
     cast_spell,
-    layer_properties::{BoardType, LayerAnchor, LayerType, WindowConf},
+    layer_properties::{BoardType, LayerType, WindowConf},
     wayland_adapter::SpellWin,
 };
 
 mod plugins;
 mod scraper;
 mod theme;
-
-enum queryType {
-    search,
-    calculator,
-    directory,
-}
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("Hello, world!");
@@ -48,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let waywindow = SpellWin::invoke_spell("swift-launcher", window_conf);
 
     let ui = LauncherWindow::new()?;
-    let theme = theme::apply_theme(&ui);
+    let _theme = theme::apply_theme(&ui);
 
     let manager = Arc::new(Mutex::new(plugins::PluginManager::new()));
     let manager_bg = Arc::clone(&manager);
@@ -93,44 +83,43 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         println!("Search changed!");
 
-        if let Some(first_char) = query.chars().next() {
-            if let Ok(mg) = manager.try_lock() {
-                if let Some(res) = mg.run_trigger(first_char, query) {
-                    let items: Vec<ActionItem> = res
-                        .into_iter()
-                        .map(|item| ActionItem {
-                            name: item.name.into(),
-                            exec: item.exec.into(),
-                            keywords: item.keywords.into(),
-                        })
-                        .collect();
-                    display_model.set_vec(items);
-                    return;
-                } else {
-                    let mut filtered: Vec<(i64, ActionItem)> = master_list
-                        .iter()
-                        .filter_map(|item| {
-                            let score = matcher
-                                .fuzzy_match(&item.name, &text)
-                                .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
-                                .or_else(|| matcher.fuzzy_match(&item.exec, &text));
+        if let Some(first_char) = query.chars().next()
+            && let Ok(mg) = manager.try_lock()
+        {
+            if let Some(res) = mg.run_trigger(first_char, query) {
+                let items: Vec<ActionItem> = res
+                    .into_iter()
+                    .map(|item| ActionItem {
+                        name: item.name.into(),
+                        exec: item.exec.into(),
+                        keywords: item.keywords.into(),
+                    })
+                    .collect();
+                display_model.set_vec(items);
+            } else {
+                let mut filtered: Vec<(i64, ActionItem)> = master_list
+                    .iter()
+                    .filter_map(|item| {
+                        let score = matcher
+                            .fuzzy_match(&item.name, &text)
+                            .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
+                            .or_else(|| matcher.fuzzy_match(&item.exec, &text));
 
-                            score.map(|s| (s, item.clone()))
-                        })
-                        .collect();
+                        score.map(|s| (s, item.clone()))
+                    })
+                    .collect();
 
-                    filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+                filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
 
-                    let new_model: Vec<ActionItem> =
-                        filtered.into_iter().map(|(_, item)| item).collect();
-                    display_model.set_vec(new_model);
-                }
+                let new_model: Vec<ActionItem> =
+                    filtered.into_iter().map(|(_, item)| item).collect();
+                display_model.set_vec(new_model);
             }
         }
     });
 
     ui.on_linefinished(move |app| {
-        let foo = Command::new("sh").arg("-c").arg(app.as_str()).spawn();
+        let _foo = Command::new("sh").arg("-c").arg(app.as_str()).spawn();
         // slint::quit_event_loop();
 
         // Force quit in case slint::quit_event_loop() fails
@@ -148,7 +137,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 let _ = Command::new("sh").arg("-c").arg(&first_item.exec).spawn();
 
-                slint::quit_event_loop();
+                let _ = slint::quit_event_loop();
 
                 std::process::exit(0);
             }
@@ -171,14 +160,3 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Ok(())
 }
-
-fn is_gnome() -> bool {
-    std::env::var("XDG_CURRENT_DESKTOP")
-        .map(|desktop| desktop.to_lowercase().contains("gnome"))
-        .unwrap_or(false)
-        || std::env::var("XDG_SESSION_DESKTOP")
-            .map(|desktop| desktop.to_lowercase().contains("gnome"))
-            .unwrap_or(false)
-}
-
-// fn fuzzy_search()

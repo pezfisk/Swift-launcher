@@ -1,4 +1,3 @@
-use std::{env, fs};
 
 fn main() {
     let mut config = slint_build::CompilerConfiguration::new().with_style("qt".into());

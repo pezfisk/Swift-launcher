@@ -84,7 +84,7 @@ fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
     // let desktop_file = Ini::load_from_file(&path).unwrap();
     // println!("Getting .desktop data");
 
-    if let Ok(conf) = Ini::load_from_file(&path) {
+    if let Ok(conf) = Ini::load_from_file(path) {
         match conf.section(Some("Desktop Entry")) {
             Some(section) => {
                 let desktop_name = section.get("Name").unwrap_or("");
@@ -98,7 +98,7 @@ fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
                     //     desktop_name, desktop_command
                     // );
 
-                    let desktop_command = strip_field_codes_regex(&desktop_command);
+                    let desktop_command = strip_field_codes_regex(desktop_command);
 
                     Ok(ActionItem {
                         name: desktop_name.into(),
