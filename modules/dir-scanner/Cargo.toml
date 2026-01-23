@@ -11,6 +11,13 @@ evalexpr = "13.1.0"
 fuzzy-matcher = "0.3.7"
 wit-bindgen-rt = "0.44.0"
 
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
 [package.metadata.component.target]
 path = "../../plugin.wit"
 world = "plugin-world"

@@ -1,8 +1,8 @@
 use bindings::exports::swift::launcher::runner::{ActionItem, Guest};
 mod bindings;
 
-use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+use fuzzy_matcher::skim::SkimMatcherV2;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -53,7 +53,7 @@ impl Guest for DirectoryScanner {
                             1,
                             ActionItem {
                                 name: display_name,
-                                exec: format!("echo -n '{}' | wl-copy", full_path_str),
+                                exec: format!("xdg-open {}", full_path_str),
                                 keywords: "/".into(),
                             },
                         ));
@@ -62,7 +62,7 @@ impl Guest for DirectoryScanner {
                             score,
                             ActionItem {
                                 name: display_name,
-                                exec: format!("echo -n '{}' | wl-copy", full_path_str),
+                                exec: format!("xdg-open {}", full_path_str),
                                 keywords: "/".into(),
                             },
                         ));
