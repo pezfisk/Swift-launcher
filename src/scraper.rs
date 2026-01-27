@@ -3,81 +3,76 @@ use regex::Regex;
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::option::Option;
+// use std::option::Option;
 use std::path::Path;
 use std::time::Instant;
 
 use crate::ActionItem;
 
-const DIRS: &[&str] = &["/var/lib/flatpak/exports/share/applications"];
+pub fn get_programs() -> Vec<ActionItem> {
+    let data_dirs = env::var("XDG_DATA_DIRS").unwrap_or_else(|_| {
+        "/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/usr/share/gnome:/usr/share/plasma:/var/lib/snapd/desktop".to_string()
+    });
+    let mut clean_dirs: Vec<&str> = data_dirs.split(":").collect();
+    clean_dirs.retain(|&s| !s.starts_with("/nix/store/"));
 
-pub fn get_programs() -> Option<Vec<ActionItem>> {
-    if let Ok(data_dirs) = env::var("XDG_DATA_DIRS") {
-        let mut clean_dirs: Vec<&str> = data_dirs.split(":").collect();
-        clean_dirs.extend_from_slice(DIRS);
-        clean_dirs.retain(|&s| !s.starts_with("/nix/store/"));
+    let start = Instant::now();
 
-        let start = Instant::now();
+    // println!("{:?}", clean_dirs);
 
-        // println!("{:?}", clean_dirs);
+    // let mut items = Vec::new();
 
-        // let mut items = Vec::new();
+    // for dir in clean_dirs {
+    //     // println!("Current dir: {:?}", dir);
+    //     if let Ok(entries) = fs::read_dir(format!("{}/applications", dir)) {
+    //         for entry in entries {
+    //             if let Ok(dir_entry) = entry {
+    //                 let path = dir_entry.path();
+    //                 // println!("Entry: {:?} file_type: {:?}", &dir_entry, &file_type);
 
-        // for dir in clean_dirs {
-        //     // println!("Current dir: {:?}", dir);
-        //     if let Ok(entries) = fs::read_dir(format!("{}/applications", dir)) {
-        //         for entry in entries {
-        //             if let Ok(dir_entry) = entry {
-        //                 let path = dir_entry.path();
-        //                 // println!("Entry: {:?} file_type: {:?}", &dir_entry, &file_type);
+    //                 if let Ok(meta) = fs::metadata(&path) {
+    //                     if meta.is_file() {
+    //                         // println!("Found desktop file");
 
-        //                 if let Ok(meta) = fs::metadata(&path) {
-        //                     if meta.is_file() {
-        //                         // println!("Found desktop file");
+    //                         if let Ok(action_item) = get_desktop_data(&path) {
+    //                             items.push(action_item);
+    //                         }
+    //                     } else if meta.is_dir() {
+    //                         // println!("Skipping directory");
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
-        //                         if let Ok(action_item) = get_desktop_data(&path) {
-        //                             items.push(action_item);
-        //                         }
-        //                     } else if meta.is_dir() {
-        //                         // println!("Skipping directory");
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+    let all_app_dirs: Vec<_> = clean_dirs
+        .iter()
+        .filter_map(|dir| {
+            let path = format!("{}/applications", dir);
+            fs::read_dir(&path).ok()
+        })
+        .flatten()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .collect();
 
-        let all_app_dirs: Vec<_> = clean_dirs
-            .iter()
-            .filter_map(|dir| {
-                let path = format!("{}/applications", dir);
-                fs::read_dir(&path).ok()
-            })
-            .flatten()
-            .filter_map(|entry| entry.ok())
-            .map(|entry| entry.path())
-            .collect();
+    let items: Vec<ActionItem> = all_app_dirs
+        .into_iter()
+        .filter_map(|path| {
+            fs::metadata(&path)
+                .ok()
+                .filter(|meta| meta.is_file())
+                .and_then(|_| get_desktop_data(&path).ok())
+        })
+        .collect();
 
-        let items: Vec<ActionItem> = all_app_dirs
-            .into_iter()
-            .filter_map(|path| {
-                fs::metadata(&path)
-                    .ok()
-                    .filter(|meta| meta.is_file())
-                    .and_then(|_| get_desktop_data(&path).ok())
-            })
-            .collect();
+    println!(
+        "Finished scraping directories, took {:.2}ms",
+        start.elapsed().as_millis()
+    );
 
-        println!(
-            "Finished scraping directories, took {:.2}ms",
-            start.elapsed().as_millis()
-        );
-
-        Some(items)
-    } else {
-        println!("XDG_DATA_DIRS not found, cant parse programs");
-        None
-    }
+    items
 }
 
 fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {

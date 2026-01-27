@@ -194,67 +194,6 @@ cp echo.wasm ~/.config/swift/plugins/
 
 ---
 
-<!-- ### Go (TinyGo) -->
-
-<!-- #### Installation -->
-<!-- ```bash -->
-<!-- # Install TinyGo (not standard Go) -->
-<!-- # macOS: brew install tinygo -->
-<!-- # Linux: https://tinygo.org/getting-started/install/ -->
-
-<!-- go install github.com/bytecodealliance/wit-bindgen-go/cmd/wit-bindgen-go@latest -->
-<!-- ``` -->
-
-<!-- #### Generate Bindings -->
-<!-- ```bash -->
-<!-- wit-bindgen-go generate plugin.wit -->
-<!-- ``` -->
-
-<!-- #### echo.go -->
-<!-- ```go -->
-<!-- package main -->
-
-<!-- import ( -->
-    <!-- "strings" -->
-    <!-- gen "gen"  // Generated bindings package -->
-<!-- ) -->
-
-<!-- type EchoPlugin struct{} -->
-
-<!-- func (e EchoPlugin) GetTrigger() string { -->
-    <!-- return ">" -->
-<!-- } -->
-
-<!-- func (e EchoPlugin) Handle(input string) []gen.ActionItem { -->
-    <!-- cleaned := strings.TrimPrefix(strings.TrimSpace(input), ">") -->
-    <!-- cleaned = strings.TrimSpace(cleaned) -->
-    
-    <!-- return []gen.ActionItem{ -->
-        <!-- { -->
-            <!-- Name:     "You typed: " + cleaned, -->
-            <!-- Exec:     "", -->
-            <!-- Keywords: ">", -->
-        <!-- }, -->
-    <!-- } -->
-<!-- } -->
-
-<!-- func init() { -->
-    <!-- gen.SetExportsSoftwareLauncherRunner(EchoPlugin{}) -->
-<!-- } -->
-
-<!-- func main() {} -->
-<!-- ``` -->
-
-<!-- #### Build & Install -->
-<!-- ```bash -->
-<!-- tinygo build -target=wasip2 -o echo.wasm echo.go -->
-<!-- cp echo.wasm ~/.config/swift/plugins/ -->
-<!-- ``` -->
-
-<!-- **Note:** Use TinyGo (not standard Go). Standard Go runtime is too heavy for WASM. -->
-
----
-
 ### JavaScript (Node.js/Deno)
 
 #### Installation
@@ -359,50 +298,6 @@ $WASI_SDK_PATH/bin/clang \
 wasm-tools component new echo-core.wasm -o echo.wasm
 cp echo.wasm ~/.config/swift/plugins/
 ```
-
----
-
-<!-- ### Zig (Modern Systems Language) -->
-
-<!-- #### Installation -->
-<!-- ```bash -->
-<!-- # Install Zig from https://ziglang.org/download -->
-<!-- zig --version  # Should be 0.13+ -->
-
-<!-- # Install wit-bindgen for Zig -->
-<!-- # (Still in early development) -->
-<!-- ``` -->
-
-<!-- #### echo.zig -->
-<!-- ```zig -->
-<!-- const std = @import("std"); -->
-
-<!-- pub fn getTrigger() ![]u8 { -->
-    <!-- return ">"; -->
-<!-- } -->
-
-<!-- pub fn handle(input: []u8) ![]u8 { -->
-    <!-- var gpa = std.heap.GeneralPurposeAllocator(.{}){}; -->
-    <!-- defer _ = gpa.deinit(); -->
-    <!-- const allocator = gpa.allocator(); -->
-    
-    <!-- const cleaned = std.mem.trim(u8, input, "> \t\n"); -->
-    <!-- const result = try std.fmt.allocPrint(allocator, "You typed: {s}", .{cleaned}); -->
-    
-    <!-- return result; -->
-<!-- } -->
-<!-- ``` -->
-
-<!-- #### Build & Install -->
-<!-- ```bash -->
-<!-- zig build-exe echo.zig -target wasm32-wasi -O ReleaseSmall -fno-entry -rdynamic --export-table --name echo-core -->
-<!-- wasm-tools component embed plugin.wit echo-core.wasm -o echo-embeded.wasm -->
-<!-- wget https://github.com/bytecodealliance/wasmtime/releases/tag/v40.0.2/wasi_snapshot_preview1.reactor.wasm -->
-<!-- wasm-tools component new echo.wasm -o echo-component.wasm -->
-<!-- cp echo-component.wasm ~/.config/swift/plugins/ -->
-<!-- ``` -->
-
-<!-- **Note:** Zig tooling for WASM components is still developing. -->
 
 ---
 

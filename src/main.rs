@@ -15,6 +15,7 @@ use spell_framework::{
     wayland_adapter::SpellWin,
 };
 
+mod config;
 mod plugins;
 mod scraper;
 mod theme;
@@ -51,8 +52,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
     // manager.load_all()?;
 
-    // TOOD: Need to properly handle Option<>
-    let all_actions = scraper::get_programs().unwrap();
+    let config = config::load_config();
+    let mut all_actions = scraper::get_programs();
+    all_actions.extend(config);
     // println!("{:?}", all_actions);
 
     // Create action model
@@ -69,7 +71,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     ui.on_action_clicked(move |idx| {
         if let Some(action) = actions_clone.row_data(idx as usize) {
             println!("Executing: {} - {}", action.name, action.exec);
-            // TODO: Execute command here
+            let _foo = Command::new("sh")
+                .arg("-c")
+                .arg(action.exec.as_str())
+                .spawn();
         }
     });
 
@@ -148,15 +153,5 @@ fn main() -> Result<(), Box<dyn Error>> {
         std::process::exit(0);
     });
 
-    // if !is_gnome() {
-    println!("Using wlr-layer-shell");
-    // ui.run()?;
     cast_spell(waywindow, None, None)
-    // } else {
-    //     // GNOME IS CURRENTLY BROKEN --- NEED TO FIX
-    //     println!("Running on gnome, using standard window");
-    //     ui.run()?;
-    // }
-
-    // Ok(())
 }

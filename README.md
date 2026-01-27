@@ -14,14 +14,14 @@ Press a global shortcut (for example `Super+Space`), type a few letters, and run
 ## Features
 
 - [x] Fuzzy search (ranked) over actions.
-- [ ] Shell command actions (optional working directory).
+- [x] Shell command actions (optional working directory).
 - [x] Desktop app actions (from `.desktop` entries).
-- [ ] Project workflows (open folder, run dev server, run tests).
-- [ ] Keyboard-only workflow (Up/Down select, Enter execute, Esc close).
+- [x] Project workflows (open folder, run dev server, run tests).
+- [x] Keyboard-only workflow (Up/Down select, Enter execute, Esc close).
 - [ ] Optional system tray integration (toggle + quick status).
 - [x] Theme config file
-- [ ] Config file (TOML/JSON/RON), with optional hot-reload.
-- [ ] (Future) Flatpak build and Flatpak-specific actions.
+- [x] Config file (TOML/JSON/RON), with optional hot-reload.
+<!-- - [ ] (Future) Flatpak build and Flatpak-specific actions. -->
 
 ## Installation
 
@@ -100,19 +100,35 @@ height=45
 color=#cdd6f4
 ```
 
-## Configuration (Not yet implemented, just for reference)
+## Configuration 
 Default path:
 - Native: ~/.config/swift/config.conf
+
+### Variables & Shell Integration
+Swift Launcher processes variables in two ways:
+- Custom Variables: Defined in the [variables] section. These are great for setting your preferred terminal or editor once.
+- System Variables: Because actions run via sh -c, you can use standard shell variables like $HOME, $PATH, or $HOSTNAME.
+
+### Terminal Execution Guide
+Different terminals require different flags to execute commands. Update your term variable based on your setup:
+
+| Execution Flag | Terminals                                            | Example term Variable              |
+| -------------- | ---------------------------------------------------- | ---------------------------------- |
+| Standard -e    | Alacritty, Ghostty, Konsole, Terminology, ST, UXTerm | term = alacritty -e vim            |
+| Double-Dash -- | Ptyxis, BlackBox, GNOME Terminal, Console (KGX)      | term = ptyxis -- vim   ​           |
+| Legacy -x      | XFCE4 Terminal, Terminator, Guake                    | term = xfce4-terminal -x vim   ​   |
+| No Flag Needed | Kitty, Foot, Tilix                                   | term = kitty vim                   |
 
 ### Example config
 
 ```ini
 [variables]
+term = "alacritty -e"
 editor = "vim"
 
 [actions]
 name = "Open dotfiles"
-cwd = "/home/$USER/dotfiles"
-exec = "$editor /home/$USER/dotfiles"
+cwd = /home/$USER/dotfiles
+exec = $term $editor /home/$USER/dotfiles
 ```
 
