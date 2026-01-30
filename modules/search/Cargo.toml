@@ -1,0 +1,23 @@
+[package]
+name = "web-search"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rust-ini = "0.21.3"
+urlencoding = "2.1.3"
+wit-bindgen-rt = "0.44.0"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[package.metadata.component.target]
+path = "../../plugin.wit"
+world = "plugin-world"

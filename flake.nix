@@ -51,6 +51,8 @@
             flatpak-xdg-utils
             appstream
             act
+
+            lazygit
           ];
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
 
