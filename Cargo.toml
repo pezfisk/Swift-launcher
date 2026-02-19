@@ -7,7 +7,7 @@ description = "Fast, light and native launcher"
 license = "GPLv3"
 
 [dependencies]
-slint = { version = "1.14.1", default-features = false, features = ["backend-qt", "renderer-software"] }
+slint = { version = "1.16.0", default-features = false, features = ["backend-qt", "renderer-software"] }
 spell-framework = "1.0.1"
 rust-ini = "0.21.3"
 fuzzy-matcher = "0.3.7"
@@ -26,7 +26,7 @@ panic = "abort"
 strip = true
 
 [build-dependencies]
-slint-build = "1.14.1"
+slint-build = "1.16.0"
 
 [patch.crates-io]
 slint = { git = "https://github.com/slint-ui/slint" }

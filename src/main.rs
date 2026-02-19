@@ -1,4 +1,5 @@
 slint::include_modules!();
+spell_framework::generate_widgets![LauncherWindow];
 
 use slint::{Model, ModelRc, VecModel};
 use std::error::Error;
@@ -12,7 +13,6 @@ use fuzzy_matcher::skim::SkimMatcherV2;
 use spell_framework::{
     cast_spell,
     layer_properties::{BoardType, LayerType, WindowConf},
-    wayland_adapter::SpellWin,
 };
 
 mod config;
@@ -26,19 +26,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     let window_size = theme::get_window_info();
     println!("{:?}", window_size);
 
-    let window_conf = WindowConf::new(
-        window_size.0,
-        window_size.1,
-        (None, None),
-        (0, 0, 0, 0),
-        LayerType::Overlay,
-        BoardType::Exclusive,
-        None,
-    );
+    let window_conf = WindowConf::builder()
+        .width(window_size.0)
+        .height(window_size.1)
+        .board_interactivity(BoardType::Exclusive)
+        .layer_type(LayerType::Overlay)
+        .build()
+        .unwrap();
 
-    let waywindow = SpellWin::invoke_spell("swift-launcher", window_conf);
+    let ui = LauncherWindowSpell::invoke_spell("swift-launcher", window_conf);
 
-    let ui = LauncherWindow::new()?;
+    // let ui = LauncherWindow::new()?;
     let _theme = theme::apply_theme(&ui);
 
     let manager = Arc::new(Mutex::new(plugins::PluginManager::new()));
@@ -153,5 +151,5 @@ fn main() -> Result<(), Box<dyn Error>> {
         std::process::exit(0);
     });
 
-    cast_spell(waywindow, None, None)
+    cast_spell!(ui)
 }
