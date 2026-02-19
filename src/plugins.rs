@@ -1,5 +1,6 @@
 use include_dir::{Dir, include_dir};
 use std::collections::HashMap;
+use std::env;
 use std::option::Option;
 use std::path::PathBuf;
 use wasmtime::component::{Component, Linker, ResourceTable, bindgen};
@@ -143,6 +144,9 @@ impl PluginManager {
     }
 
     fn create_store(&self) -> Store<MyState> {
+        let config_dir = format!("{}/.config/swift", env::var("HOME").expect("Could not find home directory"));
+        println!("{}", config_dir);
+        
         let mut builder = WasiCtxBuilder::new();
         builder.inherit_stdio();
 
@@ -151,6 +155,9 @@ impl PluginManager {
         builder
             .preopened_dir("/", "/", DirPerms::READ, FilePerms::READ)
             .expect("Failed to preopen /");
+
+        builder.preopened_dir(config_dir, "/config", DirPerms::READ, FilePerms::READ)
+               .expect("Failed to preopen /config");
 
         Store::new(
             &self.engine,

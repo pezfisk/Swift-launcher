@@ -132,3 +132,14 @@ cwd = /home/$USER/dotfiles
 exec = $term $editor /home/$USER/dotfiles
 ```
 
+## Configuration - Web Search Plugin
+
+You can add extra search engines, with a configuration file at `~/.config/swift/search.conf` with the following structure
+
+`Trigger of the search engine = url of the search engine without https:// and ?= onwards`
+
+So for example, for brave it would be
+
+```
+b=search.brave.com/search
+```

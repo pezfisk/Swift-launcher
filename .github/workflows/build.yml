@@ -107,7 +107,7 @@ jobs:
         run: cargo build --release --locked
 
       - name: Compress binary with upx
-        run: upx --best --lzma target/releases/${{ env.BINARY_NAME }}
+        run: upx --best --lzma target/release/${{ env.BINARY_NAME }}
       
       - name: Get version from Cargo.toml
         run: |
@@ -156,7 +156,7 @@ jobs:
         run: cargo build --release --locked
 
       - name: Compress with upx
-        run: upx --best --lzma target/releases/${{ env.BINARY_NAME }}
+        run: upx --best --lzma target/release/${{ env.BINARY_NAME }}
       
       - name: Strip binary
         run: strip target/release/${{ env.BINARY_NAME }}
