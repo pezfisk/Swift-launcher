@@ -155,8 +155,8 @@ jobs:
       - name: Build release binary
         run: cargo build --release --locked
 
-      - name: Compress with upx
-        run: upx --best --lzma target/release/${{ env.BINARY_NAME }}
+      # - name: Compress with upx
+      #   run: upx --best --lzma target/release/${{ env.BINARY_NAME }}
       
       - name: Strip binary
         run: strip target/release/${{ env.BINARY_NAME }}
