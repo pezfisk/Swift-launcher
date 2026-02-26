@@ -4,7 +4,7 @@ version = "0.2.1"
 edition = "2024"
 authors = ["Marco Rodriguez marco@invrs.dev"]
 description = "Fast, light and native launcher"
-license = "GPLv3"
+license = "GPL-3.0-only"
 
 [dependencies]
 slint = { version = "1.16.0", default-features = false, features = ["backend-qt", "renderer-software"] }
@@ -17,6 +17,7 @@ wasmtime-wasi = { version = "40.0.2", default-features = false }
 include_dir = "0.7.4"
 wasmtime-wasi-http = "40.0.2"
 rayon = "1.11.0"
+icon_finder = "1.0.0"
 
 [profile.release]
 opt-level = "z"

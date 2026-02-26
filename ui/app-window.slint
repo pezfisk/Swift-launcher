@@ -6,6 +6,7 @@ export struct ActionItem {
     name: string,
     exec: string,
     keywords: string,
+    icon: image,
 }
 
 export component LauncherWindow inherits Window {
@@ -86,21 +87,29 @@ export component LauncherWindow inherits Window {
                             }
                         }
                     
-                        VerticalBox {
-                            padding: 12px;
-                            Text {
-                                text: action.name;
-                                font-size: Theme.name-font-size;
-                                font-weight: 600;
-                                color: idx == selected ? Theme.name-font-color-selected : Theme.name-font-color;
-                                wrap: word-wrap;
+                        HorizontalBox {
+                            Image {
+                                // source: @image-url("/run/current-system/sw/share/icons/hicolor/scalable/apps/Ryujinx.svg");
+                                source: action.icon;
+                                image-fit: contain;
+                                width: 10%;
                             }
-                            if (Theme.exec-show): Text {
-                                text: action.exec;
-                                font-size: Theme.exec-font-size;
-                                color: idx == selected ? Theme.exec-font-color-selected : Theme.exec-font-color;
-                                wrap: word-wrap;
+                            VerticalBox {
+                                padding: 12px;
+                                Text {
+                                    text: action.name;
+                                    font-size: Theme.name-font-size;
+                                    font-weight: 600;
+                                    color: idx == selected ? Theme.name-font-color-selected : Theme.name-font-color;
+                                    wrap: word-wrap;
+                                }
+                                if (Theme.exec-show): Text {
+                                    text: action.exec;
+                                    font-size: Theme.exec-font-size;
+                                    color: idx == selected ? Theme.exec-font-color-selected : Theme.exec-font-color;
+                                    wrap: word-wrap;
 
+                                }
                             }
                         }
                     }

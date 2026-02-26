@@ -35,6 +35,7 @@ pub fn load_config() -> Vec<ActionItem> {
                 name: name.into(),
                 exec: exec.into(),
                 keywords: keywords.into(),
+                icon: Default::default(),
             });
         }
     }

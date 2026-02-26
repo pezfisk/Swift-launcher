@@ -99,6 +99,7 @@ fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
                         name: desktop_name.into(),
                         exec: desktop_command.into(),
                         keywords: desktop_keywords.into(),
+                        icon: Default::default(),
                     })
                 } else {
                     println!("Desktop entry doesnt have type or isnt type application");

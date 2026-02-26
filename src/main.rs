@@ -6,6 +6,7 @@ use std::error::Error;
 use std::process::Command;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use std::path::PathBuf;
 
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -14,6 +15,8 @@ use spell_framework::{
     cast_spell,
     layer_properties::{BoardType, LayerType, WindowConf},
 };
+
+use icon_finder::find_icon;
 
 mod config;
 mod plugins;
@@ -96,6 +99,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         name: item.name.into(),
                         exec: item.exec.into(),
                         keywords: item.keywords.into(),
+                        icon: Default::default(),
                     })
                     .collect();
                 display_model.set_vec(items);
@@ -115,7 +119,34 @@ fn main() -> Result<(), Box<dyn Error>> {
                 filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
 
                 let new_model: Vec<ActionItem> =
-                    filtered.into_iter().map(|(_, item)| item).collect();
+                    filtered.into_iter().enumerate().map(|(i, (_, item))|{
+                        let time = std::time::Instant::now();
+                        let icon = if !item.icon.size().is_empty() {
+                            item.icon.clone()
+                        } else if i < 5 {
+                            println!("loading icon {}, at index {}", item.name.as_str(), i);
+
+                            if let Some(ico_path) = find_icon(&item.name.as_str().to_lowercase(), 256) {
+                                println!("path: {:?}", ico_path);
+                                slint::Image::load_from_path(&ico_path).unwrap_or_default()
+                            } else {
+                                println!("Failed to find icon");
+                                Default::default()
+                            }
+                        } else {
+                            Default::default()
+                        };
+
+                        let elapsed = time.elapsed();
+                        println!("Time took to find icons: {:.2?}", elapsed);
+
+                        ActionItem {
+                            name: item.name.into(),
+                            exec: item.exec.into(),
+                            keywords: item.keywords.into(),
+                            icon,
+                        }
+                    }).collect();
                 display_model.set_vec(new_model);
             }
         }

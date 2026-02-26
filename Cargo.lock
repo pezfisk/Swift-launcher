@@ -7,6 +7,7 @@ name = "Swift-launcher"
 version = "0.2.1"
 dependencies = [
  "fuzzy-matcher",
+ "icon_finder",
  "include_dir",
  "rayon",
  "regex",
@@ -2731,6 +2732,12 @@ checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
 ]
+
+[[package]]
+name = "icon_finder"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f848b634beff8e320caedece9625f8066c5d99c59efdd26d3cbbbd4cbff9a3c7"
 
 [[package]]
 name = "icu_collections"
