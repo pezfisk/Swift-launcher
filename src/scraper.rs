@@ -6,10 +6,9 @@ use std::fs;
 // use std::option::Option;
 use std::path::Path;
 use std::time::Instant;
+use rayon::prelude::*;
 
-use crate::ActionItem;
-
-pub fn get_programs() -> Vec<ActionItem> {
+pub fn get_programs_raw() -> Vec<(String, String, String)> {
     let data_dirs = env::var("XDG_DATA_DIRS").unwrap_or_else(|_| {
         "/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/usr/share/gnome:/usr/share/plasma:/var/lib/snapd/desktop".to_string()
     });
@@ -17,34 +16,6 @@ pub fn get_programs() -> Vec<ActionItem> {
     clean_dirs.retain(|&s| !s.starts_with("/nix/store/"));
 
     let start = Instant::now();
-
-    // println!("{:?}", clean_dirs);
-
-    // let mut items = Vec::new();
-
-    // for dir in clean_dirs {
-    //     // println!("Current dir: {:?}", dir);
-    //     if let Ok(entries) = fs::read_dir(format!("{}/applications", dir)) {
-    //         for entry in entries {
-    //             if let Ok(dir_entry) = entry {
-    //                 let path = dir_entry.path();
-    //                 // println!("Entry: {:?} file_type: {:?}", &dir_entry, &file_type);
-
-    //                 if let Ok(meta) = fs::metadata(&path) {
-    //                     if meta.is_file() {
-    //                         // println!("Found desktop file");
-
-    //                         if let Ok(action_item) = get_desktop_data(&path) {
-    //                             items.push(action_item);
-    //                         }
-    //                     } else if meta.is_dir() {
-    //                         // println!("Skipping directory");
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 
     let all_app_dirs: Vec<_> = clean_dirs
         .iter()
@@ -57,13 +28,13 @@ pub fn get_programs() -> Vec<ActionItem> {
         .map(|entry| entry.path())
         .collect();
 
-    let items: Vec<ActionItem> = all_app_dirs
-        .into_iter()
+    let raw_items: Vec<(String, String, String)> = all_app_dirs
+        .into_par_iter()
         .filter_map(|path| {
             fs::metadata(&path)
                 .ok()
                 .filter(|meta| meta.is_file())
-                .and_then(|_| get_desktop_data(&path).ok())
+                .and_then(|_| get_desktop_data_raw(&path).ok())
         })
         .collect();
 
@@ -72,13 +43,10 @@ pub fn get_programs() -> Vec<ActionItem> {
         start.elapsed().as_millis()
     );
 
-    items
+    raw_items
 }
 
-fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
-    // let desktop_file = Ini::load_from_file(&path).unwrap();
-    // println!("Getting .desktop data");
-
+fn get_desktop_data_raw(path: &Path) -> Result<(String, String, String), Box<dyn Error>> {
     if let Ok(conf) = Ini::load_from_file(path) {
         match conf.section(Some("Desktop Entry")) {
             Some(section) => {
@@ -88,34 +56,22 @@ fn get_desktop_data(path: &Path) -> Result<ActionItem, Box<dyn Error>> {
                 let desktop_type = section.get("Type").unwrap_or("");
 
                 if desktop_type == "Application" {
-                    // println!(
-                    //     "desktop app found! Name: {} -- Exec: {}",
-                    //     desktop_name, desktop_command
-                    // );
-
                     let desktop_command = strip_field_codes_regex(desktop_command);
 
-                    Ok(ActionItem {
-                        name: desktop_name.into(),
-                        exec: desktop_command.into(),
-                        keywords: desktop_keywords.into(),
-                        icon: Default::default(),
-                    })
+                    Ok((
+                        desktop_name.to_string(),
+                        desktop_command,
+                        desktop_keywords.to_string(),
+                    ))
                 } else {
-                    println!("Desktop entry doesnt have type or isnt type application");
                     Err("Desktop entry doesnt have type or isnt type application".into())
                 }
             }
-            None => {
-                println!("No Desktop entry");
-                Err("Load failed".into())
-            }
+            None => Err("Load failed".into()),
         }
     } else {
         Err("Load failed".into())
     }
-
-    // let section = desktop_file.section(Some("Desktop Entry"))?;
 }
 
 fn strip_field_codes_regex(exec: &str) -> String {

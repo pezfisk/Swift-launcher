@@ -6,7 +6,6 @@ use std::error::Error;
 use std::process::Command;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use std::path::PathBuf;
 
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -22,6 +21,13 @@ mod config;
 mod plugins;
 mod scraper;
 mod theme;
+
+use std::cell::RefCell;
+
+thread_local! {
+    static UI_ACTIONS: RefCell<Option<Rc<VecModel<ActionItem>>>> = RefCell::new(None);
+    static MASTER_LIST: RefCell<Vec<ActionItem>> = RefCell::new(Vec::new());
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("Hello, world!");
@@ -51,32 +57,51 @@ fn main() -> Result<(), Box<dyn Error>> {
             eprintln!("Failed to load plugins: {}", e);
         }
     });
-    // manager.load_all()?;
 
-    let config = config::load_config();
-    let mut all_actions = scraper::get_programs();
-    all_actions.extend(config);
-    // println!("{:?}", all_actions);
-
-    // Create action model
     let ui_actions = Rc::new(VecModel::<ActionItem>::default());
-    ui_actions.set_vec(all_actions.clone());
     ui.set_actions(ModelRc::from(ui_actions.clone()));
 
-    let ui_handle = ui.as_weak();
-    let master_list = all_actions.clone();
-    let display_model = ui_actions.clone();
+    UI_ACTIONS.with(|a| *a.borrow_mut() = Some(ui_actions.clone()));
 
-    // Handle action clicks
-    let actions_clone = ui_actions.clone();
+    rayon::spawn(move || {
+        let mut raw_programs = scraper::get_programs_raw();
+        raw_programs.extend(config::load_config_raw());
+
+        let _ = slint::invoke_from_event_loop(move || {
+            let items: Vec<ActionItem> = raw_programs
+                .into_iter()
+                .map(|(name, exec, keywords)| ActionItem {
+                    name: name.into(),
+                    exec: exec.into(),
+                    keywords: keywords.into(),
+                    icon: Default::default(),
+                })
+                .collect();
+
+            MASTER_LIST.with(|m| *m.borrow_mut() = items.clone());
+
+            UI_ACTIONS.with(|a| {
+                if let Some(ui_actions) = a.borrow().as_ref() {
+                    ui_actions.set_vec(items);
+                }
+            });
+        });
+    });
+
+    let ui_handle = ui.as_weak();
+
     ui.on_action_clicked(move |idx| {
-        if let Some(action) = actions_clone.row_data(idx as usize) {
-            println!("Executing: {} - {}", action.name, action.exec);
-            let _foo = Command::new("sh")
-                .arg("-c")
-                .arg(action.exec.as_str())
-                .spawn();
-        }
+        UI_ACTIONS.with(|a| {
+            if let Some(ui_actions) = a.borrow().as_ref() {
+                if let Some(action) = ui_actions.row_data(idx as usize) {
+                    println!("Executing: {} - {}", action.name, action.exec);
+                    let _foo = Command::new("sh")
+                        .arg("-c")
+                        .arg(action.exec.as_str())
+                        .spawn();
+                }
+            }
+        });
     });
 
     let matcher = SkimMatcherV2::default();
@@ -84,7 +109,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         let query = text.as_str().trim();
 
         if query.is_empty() {
-            display_model.set_vec(master_list.clone());
+            UI_ACTIONS.with(|a| {
+                if let Some(ui_actions) = a.borrow().as_ref() {
+                    MASTER_LIST.with(|m| {
+                        ui_actions.set_vec(m.borrow().clone());
+                    });
+                }
+            });
             return;
         }
         println!("Search changed!");
@@ -102,52 +133,69 @@ fn main() -> Result<(), Box<dyn Error>> {
                         icon: Default::default(),
                     })
                     .collect();
-                display_model.set_vec(items);
+                UI_ACTIONS.with(|a| {
+                    if let Some(ui_actions) = a.borrow().as_ref() {
+                        ui_actions.set_vec(items);
+                    }
+                });
             } else {
-                let mut filtered: Vec<(i64, ActionItem)> = master_list
-                    .iter()
-                    .filter_map(|item| {
-                        let score = matcher
-                            .fuzzy_match(&item.name, &text)
-                            .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
-                            .or_else(|| matcher.fuzzy_match(&item.exec, &text));
+                MASTER_LIST.with(|m| {
+                    let master_list = m.borrow();
+                    let mut filtered: Vec<(i64, ActionItem)> = master_list
+                        .iter()
+                        .filter_map(|item| {
+                            let score = matcher
+                                .fuzzy_match(&item.name, &text)
+                                .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
+                                .or_else(|| matcher.fuzzy_match(&item.exec, &text));
 
-                        score.map(|s| (s, item.clone()))
-                    })
-                    .collect();
+                            score.map(|s| (s, item.clone()))
+                        })
+                        .collect();
 
-                filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+                    filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
 
-                let new_model: Vec<ActionItem> =
-                    filtered.into_iter().enumerate().map(|(i, (_, item))|{
-                        let time = std::time::Instant::now();
-                        let icon = if !item.icon.size().is_empty() {
-                            item.icon.clone()
-                        } else if i < 5 {
-                            println!("loading icon {}, at index {}", item.name.as_str(), i);
+                    let new_model: Vec<ActionItem> = filtered
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, (_, item))| {
+                            let time = std::time::Instant::now();
+                            let icon = if !item.icon.size().is_empty() {
+                                item.icon.clone()
+                            } else if i < 5 {
+                                println!("loading icon {}, at index {}", item.name.as_str(), i);
 
-                            if let Some(ico_path) = find_icon(&item.name.as_str().to_lowercase(), 256) {
-                                println!("path: {:?}", ico_path);
-                                slint::Image::load_from_path(&ico_path).unwrap_or_default()
+                                if let Some(ico_path) =
+                                    find_icon(&item.name.as_str().to_lowercase(), 256)
+                                {
+                                    println!("path: {:?}", ico_path);
+                                    slint::Image::load_from_path(&ico_path).unwrap_or_default()
+                                } else {
+                                    println!("Failed to find icon");
+                                    Default::default()
+                                }
                             } else {
-                                println!("Failed to find icon");
                                 Default::default()
+                            };
+
+                            let elapsed = time.elapsed();
+                            println!("Time took to find icons: {:.2?}", elapsed);
+
+                            ActionItem {
+                                name: item.name.into(),
+                                exec: item.exec.into(),
+                                keywords: item.keywords.into(),
+                                icon,
                             }
-                        } else {
-                            Default::default()
-                        };
+                        })
+                        .collect();
 
-                        let elapsed = time.elapsed();
-                        println!("Time took to find icons: {:.2?}", elapsed);
-
-                        ActionItem {
-                            name: item.name.into(),
-                            exec: item.exec.into(),
-                            keywords: item.keywords.into(),
-                            icon,
+                    UI_ACTIONS.with(|a| {
+                        if let Some(ui_actions) = a.borrow().as_ref() {
+                            ui_actions.set_vec(new_model);
                         }
-                    }).collect();
-                display_model.set_vec(new_model);
+                    });
+                });
             }
         }
     });
@@ -160,22 +208,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         std::process::exit(0);
     });
 
-    ui.on_accepted({
-        let ui_actions_clone = ui_actions.clone();
+    ui.on_accepted(move || {
+        let ui = ui_handle.unwrap();
+        let selected = ui.get_selected();
 
-        move || {
-            let ui = ui_handle.unwrap();
-            let selected = ui.get_selected();
-            if let Some(first_item) = ui_actions_clone.row_data(selected.try_into().unwrap()) {
-                println!("Launching: {}", first_item.name);
+        UI_ACTIONS.with(|a| {
+            if let Some(ui_actions) = a.borrow().as_ref() {
+                if let Some(first_item) = ui_actions.row_data(selected.try_into().unwrap()) {
+                    println!("Launching: {}", first_item.name);
 
-                let _ = Command::new("sh").arg("-c").arg(&first_item.exec).spawn();
+                    let _ = Command::new("sh").arg("-c").arg(&first_item.exec).spawn();
 
-                let _ = slint::quit_event_loop();
+                    let _ = slint::quit_event_loop();
 
-                std::process::exit(0);
+                    std::process::exit(0);
+                }
             }
-        }
+        });
     });
 
     ui.on_quit(move || {

@@ -2735,9 +2735,9 @@ dependencies = [
 
 [[package]]
 name = "icon_finder"
-version = "1.0.0"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f848b634beff8e320caedece9625f8066c5d99c59efdd26d3cbbbd4cbff9a3c7"
+checksum = "3758ed5d6cb0226c9711bd50dffefe30b14e2742844cc3c1bd5fc88b2a3017af"
 
 [[package]]
 name = "icu_collections"

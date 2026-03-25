@@ -4,9 +4,7 @@ use std::error::Error;
 use std::path::PathBuf;
 // use std::path::{self, Path};
 
-use crate::ActionItem;
-
-pub fn load_config() -> Vec<ActionItem> {
+pub fn load_config_raw() -> Vec<(String, String, String)> {
     let mut actions = Vec::new();
     let conf = Ini::load_from_file(get_config_file().unwrap()).unwrap_or_default();
 
@@ -31,12 +29,7 @@ pub fn load_config() -> Vec<ActionItem> {
                 keywords = keywords.replace(k, v);
             }
 
-            actions.push(ActionItem {
-                name: name.into(),
-                exec: exec.into(),
-                keywords: keywords.into(),
-                icon: Default::default(),
-            });
+            actions.push((name, exec, keywords));
         }
     }
     actions
