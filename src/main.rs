@@ -5,6 +5,7 @@ use slint::{Model, ModelRc, VecModel};
 use std::error::Error;
 use std::process::Command;
 use std::rc::Rc;
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
 use fuzzy_matcher::FuzzyMatcher;
@@ -58,34 +59,82 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
-    let ui_actions = Rc::new(VecModel::<ActionItem>::default());
+    let ui_actions = std::rc::Rc::new(VecModel::<ActionItem>::default());
     ui.set_actions(ModelRc::from(ui_actions.clone()));
 
     UI_ACTIONS.with(|a| *a.borrow_mut() = Some(ui_actions.clone()));
 
-    rayon::spawn(move || {
-        let mut raw_programs = scraper::get_programs_raw();
-        raw_programs.extend(config::load_config_raw());
+    let (tx, rx) = mpsc::channel::<(String, String, String)>();
 
-        let _ = slint::invoke_from_event_loop(move || {
-            let items: Vec<ActionItem> = raw_programs
-                .into_iter()
-                .map(|(name, exec, keywords)| ActionItem {
-                    name: name.into(),
-                    exec: exec.into(),
-                    keywords: keywords.into(),
+    rayon::spawn({
+        let tx_scraper = tx.clone();
+        let tx_config = tx.clone();
+        move || {
+            scraper::get_programs_raw_streaming(move |item| {
+                let _ = tx_scraper.send(item);
+            });
+
+            for item in config::load_config_raw() {
+                let _ = tx_config.send(item);
+            }
+        }
+    });
+
+    let pending = std::cell::RefCell::new(Vec::<(String, String, String)>::new());
+    let timer = std::sync::Arc::new(std::sync::Mutex::new(slint::Timer::default()));
+    let item_count: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
+    let icon_batch_size = 20;
+
+    timer.lock().unwrap().start(slint::TimerMode::Repeated, std::time::Duration::from_millis(50), move || {
+        while let Ok(item) = rx.try_recv() {
+            pending.borrow_mut().push(item.clone());
+            MASTER_LIST.with(|m| {
+                m.borrow_mut().push(ActionItem {
+                    name: item.0.clone().into(),
+                    exec: item.1.clone().into(),
+                    keywords: item.2.clone().into(),
                     icon: Default::default(),
+                });
+            });
+        }
+
+        if !pending.borrow().is_empty() {
+            let batch: Vec<(String, String, String)> = pending.borrow_mut().drain(..).collect();
+            let batch_len = batch.len();
+            
+            *item_count.borrow_mut() += batch_len;
+            
+            let items: Vec<ActionItem> = batch
+                .into_iter()
+                .enumerate()
+                .map(|(i, (name, exec, keywords))| {
+                    let global_idx = *item_count.borrow() - batch_len + i;
+                    
+                    let icon = if global_idx < icon_batch_size {
+                        if let Some(ico_path) = find_icon(&name.to_lowercase(), 256) {
+                            slint::Image::load_from_path(&ico_path).unwrap_or_default()
+                        } else {
+                            Default::default()
+                        }
+                    } else {
+                        Default::default()
+                    };
+                    
+                    ActionItem {
+                        name: name.into(),
+                        exec: exec.into(),
+                        keywords: keywords.into(),
+                        icon,
+                    }
                 })
                 .collect();
 
-            MASTER_LIST.with(|m| *m.borrow_mut() = items.clone());
-
             UI_ACTIONS.with(|a| {
                 if let Some(ui_actions) = a.borrow().as_ref() {
-                    ui_actions.set_vec(items);
+                    ui_actions.extend(items);
                 }
             });
-        });
+        }
     });
 
     let ui_handle = ui.as_weak();

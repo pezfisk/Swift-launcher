@@ -1,14 +1,20 @@
 use ini::Ini;
+use rayon::prelude::*;
 use regex::Regex;
+use std::collections::HashSet;
 use std::env;
 use std::error::Error;
 use std::fs;
-// use std::option::Option;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use rayon::prelude::*;
 
-pub fn get_programs_raw() -> Vec<(String, String, String)> {
+pub fn get_programs_raw_streaming<F>(on_item: F)
+where
+    F: FnMut((String, String, String)) + Send + Sync + 'static,
+{
+    let on_item = Arc::new(Mutex::new(on_item));
+    let seen = Arc::new(Mutex::new(HashSet::<String>::new()));
     let data_dirs = env::var("XDG_DATA_DIRS").unwrap_or_else(|_| {
         "/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/usr/share/gnome:/usr/share/plasma:/var/lib/snapd/desktop".to_string()
     });
@@ -28,7 +34,7 @@ pub fn get_programs_raw() -> Vec<(String, String, String)> {
         .map(|entry| entry.path())
         .collect();
 
-    let raw_items: Vec<(String, String, String)> = all_app_dirs
+    all_app_dirs
         .into_par_iter()
         .filter_map(|path| {
             fs::metadata(&path)
@@ -36,14 +42,27 @@ pub fn get_programs_raw() -> Vec<(String, String, String)> {
                 .filter(|meta| meta.is_file())
                 .and_then(|_| get_desktop_data_raw(&path).ok())
         })
-        .collect();
+        .for_each(|item| {
+            let exec_key = item
+                .1
+                .split_whitespace()
+                .next()
+                .unwrap_or("")
+                .to_lowercase();
+            if !exec_key.is_empty() {
+                let mut seen = seen.lock().unwrap();
+                if seen.insert(exec_key) {
+                    if let Ok(mut cb) = on_item.lock() {
+                        cb(item);
+                    }
+                }
+            }
+        });
 
     println!(
         "Finished scraping directories, took {:.2}ms",
         start.elapsed().as_millis()
     );
-
-    raw_items
 }
 
 fn get_desktop_data_raw(path: &Path) -> Result<(String, String, String), Box<dyn Error>> {
