@@ -33,24 +33,20 @@ thread_local! {
 }
 
 static USAGE_CACHE: std::sync::OnceLock<Arc<Mutex<cache::UsageCache>>> = std::sync::OnceLock::new();
+static MATCHER: std::sync::OnceLock<SkimMatcherV2> = std::sync::OnceLock::new();
 
 fn main() -> Result<(), Box<dyn Error>> {
-    println!("Hello, world!");
+    let home = std::env::var("HOME").expect("HOME environment variable must be set");
 
     let usage_cache = cache::UsageCache::load();
     USAGE_CACHE.set(Arc::new(Mutex::new(usage_cache))).ok();
 
-    let fallback_path = format!(
-        "{}/.config/swift/icons/fallback.png",
-        std::env::var("HOME").unwrap_or_default()
-    );
+    let fallback_path = format!("{}/.config/swift/icons/fallback.png", home);
     if let Ok(icon) = slint::Image::load_from_path(std::path::Path::new(&fallback_path)) {
         FALLBACK_ICON.with(|f| *f.borrow_mut() = Some(icon));
     }
 
     let window_size = theme::get_window_info();
-    println!("{:?}", window_size);
-
     let window_conf = WindowConf::builder()
         .width(window_size.0)
         .height(window_size.1)
@@ -116,18 +112,24 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if !pending.borrow().is_empty() {
-            let mut batch: Vec<(String, String, String)> = pending.borrow_mut().drain(..).collect();
+            let batch: Vec<(String, String, String)> = pending.borrow_mut().drain(..).collect();
             let batch_len = batch.len();
             
             let loaded = *icons_loaded.borrow();
-            if loaded < icon_batch_size && batch_len > 0 {
-                batch.sort_by(|a, b| {
-                    let cache = USAGE_CACHE.get().map(|c| c.lock().unwrap());
-                    let priority_a = cache.as_ref().map(|c| c.get_priority(&a.1)).unwrap_or(0);
-                    let priority_b = cache.as_ref().map(|c| c.get_priority(&b.1)).unwrap_or(0);
-                    priority_b.cmp(&priority_a)
-                });
-            }
+            let batch = if loaded < icon_batch_size && batch_len > 0 {
+                let priorities: Vec<u32> = batch.iter()
+                    .map(|(_, exec, _)| {
+                        USAGE_CACHE.get().map(|c| c.lock().unwrap().get_priority(exec)).unwrap_or(0)
+                    })
+                    .collect();
+                let mut indices: Vec<usize> = (0..batch_len).collect();
+                indices.sort_by(|&a, &b| priorities[b].cmp(&priorities[a]));
+                indices.into_iter()
+                    .map(|i| batch[i].clone())
+                    .collect()
+            } else {
+                batch
+            };
 
             *item_count.borrow_mut() += batch_len;
             
@@ -183,7 +185,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         });
     });
 
-    let matcher = SkimMatcherV2::default();
+    let matcher = MATCHER.get_or_init(SkimMatcherV2::default);
     ui.on_search_changed(move |text: slint::SharedString| {
         let query = text.as_str().trim();
 
@@ -197,7 +199,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             });
             return;
         }
-        println!("Search changed!");
 
         if let Some(first_char) = query.chars().next()
             && let Ok(mg) = manager.try_lock()

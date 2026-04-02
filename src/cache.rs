@@ -20,11 +20,16 @@ impl UsageCache {
         }
     }
 
+    fn exec_key(exec: &str) -> String {
+        exec.split_whitespace().next().unwrap_or("").to_lowercase()
+    }
+
     fn cache_path() -> PathBuf {
-        let config_dir = std::env::var("XDG_CONFIG_HOME")
-            .unwrap_or_else(|_| format!("{}/.config", std::env::var("HOME").unwrap()));
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let config_dir =
+            std::env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
         let cache_dir = format!("{}/swift", config_dir);
-        fs::create_dir_all(&cache_dir).ok();
+        let _ = fs::create_dir_all(&cache_dir);
         PathBuf::from(format!("{}/usage_cache.json", cache_dir))
     }
 
@@ -45,14 +50,14 @@ impl UsageCache {
     }
 
     pub fn increment(&mut self, exec: &str) {
-        let key = exec.split_whitespace().next().unwrap_or("").to_lowercase();
+        let key = Self::exec_key(exec);
         if !key.is_empty() {
             *self.counts.entry(key).or_insert(0) += 1;
         }
     }
 
     pub fn get_priority(&self, exec: &str) -> u32 {
-        let key = exec.split_whitespace().next().unwrap_or("").to_lowercase();
+        let key = Self::exec_key(exec);
         self.counts.get(&key).copied().unwrap_or(0)
     }
 }

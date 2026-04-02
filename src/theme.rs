@@ -5,13 +5,21 @@ use std::error::Error;
 use crate::{LauncherWindow, Theme};
 
 pub fn get_window_info() -> (u32, u32) {
-    let home = std::env::var("HOME").unwrap();
+    let home = std::env::var("HOME").expect("HOME must be set");
     let config_path = format!("{}/.config/swift/theme.conf", home);
 
-    if let Ok(conf) = Ini::load_from_file(config_path) {
+    if let Ok(conf) = Ini::load_from_file(&config_path) {
         if let Some(section) = conf.section(Some("Window")) {
-            let width = section.get("width").unwrap_or("").parse::<u32>().unwrap();
-            let height = section.get("height").unwrap_or("").parse::<u32>().unwrap();
+            let width = section
+                .get("width")
+                .unwrap_or("")
+                .parse::<u32>()
+                .unwrap_or(600);
+            let height = section
+                .get("height")
+                .unwrap_or("")
+                .parse::<u32>()
+                .unwrap_or(400);
 
             (width, height)
         } else {
@@ -23,8 +31,7 @@ pub fn get_window_info() -> (u32, u32) {
 }
 
 pub fn apply_theme(ui: &LauncherWindow) -> Result<(), Box<dyn Error>> {
-    println!("Applying theme");
-    let home = std::env::var("HOME").unwrap();
+    let home = std::env::var("HOME").expect("HOME must be set");
     let config_path = format!("{}/.config/swift/theme.conf", home);
     let theme = ui.global::<Theme>();
 
