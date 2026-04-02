@@ -51,11 +51,10 @@ where
                 .to_lowercase();
             if !exec_key.is_empty() {
                 let mut seen = seen.lock().unwrap();
-                if seen.insert(exec_key) {
-                    if let Ok(mut cb) = on_item.lock() {
+                if seen.insert(exec_key)
+                    && let Ok(mut cb) = on_item.lock() {
                         cb(item);
                     }
-                }
             }
         });
 

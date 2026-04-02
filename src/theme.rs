@@ -115,6 +115,12 @@ pub fn apply_theme(ui: &LauncherWindow) -> Result<(), Box<dyn Error>> {
             {
                 theme.set_exec_show(show);
             }
+            if let Some(show) = section
+                .get("show-icons")
+                .and_then(|v| v.parse::<bool>().ok())
+            {
+                theme.set_show_icons(show);
+            }
         }
 
         if let Some(section) = conf.section(Some("Runner")) {

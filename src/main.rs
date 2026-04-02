@@ -18,6 +18,7 @@ use spell_framework::{
 
 use icon_finder::find_icon;
 
+mod cache;
 mod config;
 mod plugins;
 mod scraper;
@@ -26,12 +27,26 @@ mod theme;
 use std::cell::RefCell;
 
 thread_local! {
-    static UI_ACTIONS: RefCell<Option<Rc<VecModel<ActionItem>>>> = RefCell::new(None);
-    static MASTER_LIST: RefCell<Vec<ActionItem>> = RefCell::new(Vec::new());
+    static UI_ACTIONS: RefCell<Option<Rc<VecModel<ActionItem>>>> = const { RefCell::new(None) };
+    static MASTER_LIST: RefCell<Vec<ActionItem>> = const { RefCell::new(Vec::new()) };
+    static FALLBACK_ICON: RefCell<Option<slint::Image>> = const { RefCell::new(None) };
 }
+
+static USAGE_CACHE: std::sync::OnceLock<Arc<Mutex<cache::UsageCache>>> = std::sync::OnceLock::new();
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("Hello, world!");
+
+    let usage_cache = cache::UsageCache::load();
+    USAGE_CACHE.set(Arc::new(Mutex::new(usage_cache))).ok();
+
+    let fallback_path = format!(
+        "{}/.config/swift/icons/fallback.png",
+        std::env::var("HOME").unwrap_or_default()
+    );
+    if let Ok(icon) = slint::Image::load_from_path(std::path::Path::new(&fallback_path)) {
+        FALLBACK_ICON.with(|f| *f.borrow_mut() = Some(icon));
+    }
 
     let window_size = theme::get_window_info();
     println!("{:?}", window_size);
@@ -46,7 +61,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let ui = LauncherWindowSpell::invoke_spell("swift-launcher", window_conf);
 
-    // let ui = LauncherWindow::new()?;
     let _theme = theme::apply_theme(&ui);
 
     let manager = Arc::new(Mutex::new(plugins::PluginManager::new()));
@@ -81,11 +95,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
 
     let pending = std::cell::RefCell::new(Vec::<(String, String, String)>::new());
-    let timer = std::sync::Arc::new(std::sync::Mutex::new(slint::Timer::default()));
     let item_count: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
     let icon_batch_size = 20;
+    let icons_loaded: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
 
-    timer.lock().unwrap().start(slint::TimerMode::Repeated, std::time::Duration::from_millis(50), move || {
+    #[allow(clippy::arc_with_non_send_sync)]
+    let timer = std::sync::Arc::new(std::sync::Mutex::new(slint::Timer::default()));
+    let timer_clone = timer.clone();
+    timer_clone.lock().unwrap().start(slint::TimerMode::Repeated, std::time::Duration::from_millis(50), move || {
         while let Ok(item) = rx.try_recv() {
             pending.borrow_mut().push(item.clone());
             MASTER_LIST.with(|m| {
@@ -99,22 +116,36 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if !pending.borrow().is_empty() {
-            let batch: Vec<(String, String, String)> = pending.borrow_mut().drain(..).collect();
+            let mut batch: Vec<(String, String, String)> = pending.borrow_mut().drain(..).collect();
             let batch_len = batch.len();
             
+            let loaded = *icons_loaded.borrow();
+            if loaded < icon_batch_size && batch_len > 0 {
+                batch.sort_by(|a, b| {
+                    let cache = USAGE_CACHE.get().map(|c| c.lock().unwrap());
+                    let priority_a = cache.as_ref().map(|c| c.get_priority(&a.1)).unwrap_or(0);
+                    let priority_b = cache.as_ref().map(|c| c.get_priority(&b.1)).unwrap_or(0);
+                    priority_b.cmp(&priority_a)
+                });
+            }
+
             *item_count.borrow_mut() += batch_len;
             
             let items: Vec<ActionItem> = batch
                 .into_iter()
                 .enumerate()
                 .map(|(i, (name, exec, keywords))| {
-                    let global_idx = *item_count.borrow() - batch_len + i;
+                    let _global_idx = *item_count.borrow() - batch_len + i;
+                    let loaded = *icons_loaded.borrow();
                     
-                    let icon = if global_idx < icon_batch_size {
+                    let icon = if loaded < icon_batch_size {
+                        *icons_loaded.borrow_mut() += 1;
                         if let Some(ico_path) = find_icon(&name.to_lowercase(), 256) {
-                            slint::Image::load_from_path(&ico_path).unwrap_or_default()
+                            slint::Image::load_from_path(&ico_path).unwrap_or_else(|_| {
+                                FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
+                            })
                         } else {
-                            Default::default()
+                            FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
                         }
                     } else {
                         Default::default()
@@ -141,15 +172,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     ui.on_action_clicked(move |idx| {
         UI_ACTIONS.with(|a| {
-            if let Some(ui_actions) = a.borrow().as_ref() {
-                if let Some(action) = ui_actions.row_data(idx as usize) {
+            if let Some(ui_actions) = a.borrow().as_ref()
+                && let Some(action) = ui_actions.row_data(idx as usize) {
                     println!("Executing: {} - {}", action.name, action.exec);
                     let _foo = Command::new("sh")
                         .arg("-c")
                         .arg(action.exec.as_str())
                         .spawn();
                 }
-            }
         });
     });
 
@@ -208,32 +238,26 @@ fn main() -> Result<(), Box<dyn Error>> {
                         .into_iter()
                         .enumerate()
                         .map(|(i, (_, item))| {
-                            let time = std::time::Instant::now();
                             let icon = if !item.icon.size().is_empty() {
                                 item.icon.clone()
                             } else if i < 5 {
-                                println!("loading icon {}, at index {}", item.name.as_str(), i);
-
                                 if let Some(ico_path) =
                                     find_icon(&item.name.as_str().to_lowercase(), 256)
                                 {
-                                    println!("path: {:?}", ico_path);
-                                    slint::Image::load_from_path(&ico_path).unwrap_or_default()
+                                    slint::Image::load_from_path(&ico_path).unwrap_or_else(|_| {
+                                        FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
+                                    })
                                 } else {
-                                    println!("Failed to find icon");
-                                    Default::default()
+                                    FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
                                 }
                             } else {
-                                Default::default()
+                                FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
                             };
 
-                            let elapsed = time.elapsed();
-                            println!("Time took to find icons: {:.2?}", elapsed);
-
                             ActionItem {
-                                name: item.name.into(),
-                                exec: item.exec.into(),
-                                keywords: item.keywords.into(),
+                                name: item.name,
+                                exec: item.exec,
+                                keywords: item.keywords,
                                 icon,
                             }
                         })
@@ -262,9 +286,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         let selected = ui.get_selected();
 
         UI_ACTIONS.with(|a| {
-            if let Some(ui_actions) = a.borrow().as_ref() {
-                if let Some(first_item) = ui_actions.row_data(selected.try_into().unwrap()) {
+            if let Some(ui_actions) = a.borrow().as_ref()
+                && let Some(first_item) = ui_actions.row_data(selected.try_into().unwrap()) {
                     println!("Launching: {}", first_item.name);
+
+                    if let Some(cache) = USAGE_CACHE.get() {
+                        cache.lock().unwrap().increment(&first_item.exec);
+                        cache.lock().unwrap().save();
+                    }
 
                     let _ = Command::new("sh").arg("-c").arg(&first_item.exec).spawn();
 
@@ -272,7 +301,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                     std::process::exit(0);
                 }
-            }
         });
     });
 

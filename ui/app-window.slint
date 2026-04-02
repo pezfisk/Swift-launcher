@@ -88,11 +88,10 @@ export component LauncherWindow inherits Window {
                         }
                     
                         HorizontalBox {
-                            Image {
-                                // source: @image-url("/run/current-system/sw/share/icons/hicolor/scalable/apps/Ryujinx.svg");
+                            if (Theme.show-icons): Image {
                                 source: action.icon;
                                 image-fit: contain;
-                                width: 10%;
+                                width: 48px;
                             }
                             VerticalBox {
                                 padding: 12px;

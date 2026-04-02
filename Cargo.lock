@@ -12,6 +12,8 @@ dependencies = [
  "rayon",
  "regex",
  "rust-ini",
+ "serde",
+ "serde_json",
  "slint",
  "slint-build",
  "spell-framework",

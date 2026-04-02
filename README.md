@@ -1,7 +1,6 @@
 # Swift Launcher
 
 Swift Launcher is a keyboard-first launcher written in Rust + Slint.  
-Press a global shortcut (for example `Super+Space`), type a few letters, and run actions instantly.
 
 ![screenshot](assets/screenshot.png)
 
@@ -9,7 +8,6 @@ Press a global shortcut (for example `Super+Space`), type a few letters, and run
 
 - Minimal latency: open → search → execute fast.
 - Great UX: clean UI, solid keyboard navigation, sane defaults.
-- Ship it as a solid native binary first, then add a Flatpak build later (if possible).
 
 ## Features
 
@@ -18,7 +16,7 @@ Press a global shortcut (for example `Super+Space`), type a few letters, and run
 - [x] Desktop app actions (from `.desktop` entries).
 - [x] Project workflows (open folder, run dev server, run tests).
 - [x] Keyboard-only workflow (Up/Down select, Enter execute, Esc close).
-- [ ] Optional system tray integration (toggle + quick status).
+- [x] Cache entries.
 - [x] Theme config file
 - [x] Config file (TOML/JSON/RON), with optional hot-reload.
 <!-- - [ ] (Future) Flatpak build and Flatpak-specific actions. -->
@@ -53,12 +51,12 @@ Swift Launcher uses **WebAssembly (WASM) Components** for plugins, allowing you 
 - **Polyglot**: Write plugins in Rust, Python, Go, JavaScript, C, Zig, and more
 - **Safe**: Each plugin runs in an isolated sandbox
 - **Fast**: Near-native performance (95%+ of native speed)
-- **Reliable**: One plugin crash doesn't crash Shift
+- **Reliable**: One plugin crash doesn't crash Swift
 
 ### Creating Your First Plugin
 
 **[Read PLUGINS.md](./assets/PLUGINS.md)** for complete instructions on:
-- Building the echo plugin in **Rust**, **Python**, **Go**, **JavaScript**, **C/C++**, and **Zig**
+- Building the echo plugin in **Rust**, **Python** and **JavaScript**.
 - How to target `wasm32-wasip2`
 - Installation and testing
 - Best practices for plugin development
@@ -87,18 +85,23 @@ option-color=#313244
 option-color-selected=#cba6f7
 option-border-rodius=10
 name-font-size=14
+name-font-color=#cdd6f4
+name-font-color-selected=#1e1e2e
 exec-font-size=11
-exec-show=false
+exec-font-color=#a6adc8
+exec-font-color-selected=#45475a
+exec-show=true
+show-icons=true
 
 [Runner]
 font-size=16
+font-color=#cdd6f4
 background-color=#181825
 border-color=#45475a
 border-width=1
 border-radious=8
 height=45
-color=#cdd6f4
-```
+````
 
 ## Configuration 
 Default path:
