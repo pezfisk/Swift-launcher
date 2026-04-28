@@ -15,11 +15,35 @@ where
 {
     let on_item = Arc::new(Mutex::new(on_item));
     let seen = Arc::new(Mutex::new(HashSet::<String>::new()));
-    let data_dirs = env::var("XDG_DATA_DIRS").unwrap_or_else(|_| {
-        "/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/usr/share/gnome:/usr/share/plasma:/var/lib/snapd/desktop".to_string()
-    });
-    let mut clean_dirs: Vec<&str> = data_dirs.split(":").collect();
-    clean_dirs.retain(|&s| !s.starts_with("/nix/store/"));
+    let home = env::var("HOME").unwrap_or_else(|_| "/home".to_string());
+    let xdg_data_home = env::var("XDG_DATA_HOME").unwrap_or_else(|_| format!("{}/.local/share", home));
+    
+    let default_dirs = [
+        format!("{}/flatpak/exports/share", xdg_data_home),
+        xdg_data_home,
+        "/var/lib/flatpak/exports/share".to_string(),
+        "/usr/local/share".to_string(),
+        "/usr/share".to_string(),
+        "/usr/share/gnome".to_string(),
+        "/usr/share/plasma".to_string(),
+        "/usr/share/kde5".to_string(),
+        "/usr/share/kde6".to_string(),
+        "/usr/share/plasma5".to_string(),
+        "/usr/share/plasma6".to_string(),
+        "/opt/share".to_string(),
+        "/var/lib/snapd/desktop".to_string(),
+    ];
+    
+    let system_dirs: Vec<String> = env::var("XDG_DATA_DIRS")
+        .unwrap_or_default()
+        .split(":")
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .collect();
+    
+    let dir_set: HashSet<String> = default_dirs.into_iter().chain(system_dirs).collect();
+    let mut clean_dirs: Vec<String> = dir_set.into_iter().collect();
+    clean_dirs.retain(|s| !s.starts_with("/nix/store/"));
 
     let start = Instant::now();
 

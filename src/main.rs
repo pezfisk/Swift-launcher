@@ -193,7 +193,17 @@ fn main() -> Result<(), Box<dyn Error>> {
             UI_ACTIONS.with(|a| {
                 if let Some(ui_actions) = a.borrow().as_ref() {
                     MASTER_LIST.with(|m| {
-                        ui_actions.set_vec(m.borrow().clone());
+                        let mut items: Vec<ActionItem> = m.borrow().clone().into_iter().collect();
+                        items.sort_by(|a, b| {
+                            let priority_a = USAGE_CACHE.get()
+                                .map(|c| c.lock().unwrap().get_priority(&a.exec))
+                                .unwrap_or(0);
+                            let priority_b = USAGE_CACHE.get()
+                                .map(|c| c.lock().unwrap().get_priority(&b.exec))
+                                .unwrap_or(0);
+                            priority_b.cmp(&priority_a)
+                        });
+                        ui_actions.set_vec(items);
                     });
                 }
             });
@@ -221,7 +231,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 MASTER_LIST.with(|m| {
                     let master_list = m.borrow();
-                    let mut filtered: Vec<(i64, ActionItem)> = master_list
+                    let mut filtered: Vec<(i64, u32, ActionItem)> = master_list
                         .iter()
                         .filter_map(|item| {
                             let score = matcher
@@ -229,16 +239,26 @@ fn main() -> Result<(), Box<dyn Error>> {
                                 .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
                                 .or_else(|| matcher.fuzzy_match(&item.exec, &text));
 
-                            score.map(|s| (s, item.clone()))
+                            let priority = USAGE_CACHE.get()
+                                .map(|c| c.lock().unwrap().get_priority(&item.exec))
+                                .unwrap_or(0);
+
+                            score.map(|s| (s, priority, item.clone()))
                         })
                         .collect();
 
-                    filtered.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
+                    filtered.sort_by(|(score_a, priority_a, _), (score_b, priority_b, _)| {
+                        if priority_a != priority_b {
+                            priority_b.cmp(priority_a)
+                        } else {
+                            score_b.cmp(score_a)
+                        }
+                    });
 
                     let new_model: Vec<ActionItem> = filtered
                         .into_iter()
                         .enumerate()
-                        .map(|(i, (_, item))| {
+                        .map(|(i, (_, _, item))| {
                             let icon = if !item.icon.size().is_empty() {
                                 item.icon.clone()
                             } else if i < 5 {
