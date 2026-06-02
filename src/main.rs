@@ -17,6 +17,7 @@ use spell_framework::{
 };
 
 use icon_finder::find_icon;
+use rayon::prelude::*;
 
 mod cache;
 mod config;
@@ -26,14 +27,42 @@ mod theme;
 
 use std::cell::RefCell;
 
-thread_local! {
-    static UI_ACTIONS: RefCell<Option<Rc<VecModel<ActionItem>>>> = const { RefCell::new(None) };
-    static MASTER_LIST: RefCell<Vec<ActionItem>> = const { RefCell::new(Vec::new()) };
-    static FALLBACK_ICON: RefCell<Option<slint::Image>> = const { RefCell::new(None) };
-}
-
 static USAGE_CACHE: std::sync::OnceLock<Arc<Mutex<cache::UsageCache>>> = std::sync::OnceLock::new();
 static MATCHER: std::sync::OnceLock<SkimMatcherV2> = std::sync::OnceLock::new();
+static ICON_PATH_CACHE: std::sync::OnceLock<Arc<Mutex<std::collections::HashMap<String, std::path::PathBuf>>>> = std::sync::OnceLock::new();
+
+thread_local! {
+    static UI_ACTIONS: RefCell<Option<Rc<VecModel<ActionItem>>>> = const { RefCell::new(None) };
+    static MASTER_LIST: RefCell<Vec<(slint::SharedString, slint::SharedString, slint::SharedString)>> = const { RefCell::new(Vec::new()) };
+    static FALLBACK_ICON: RefCell<Option<slint::Image>> = const { RefCell::new(None) };
+    static LOCAL_IMAGE_CACHE: RefCell<std::collections::HashMap<String, slint::Image>> = RefCell::new(std::collections::HashMap::new());
+}
+
+fn get_icon(name: &str) -> slint::Image {
+    let name_lower = name.to_lowercase();
+
+    if let Some(img) = LOCAL_IMAGE_CACHE.with(|c| c.borrow().get(&name_lower).cloned()) {
+        return img;
+    }
+
+    let path_cache = ICON_PATH_CACHE.get_or_init(|| Arc::new(Mutex::new(std::collections::HashMap::new())));
+    if let Some(path) = path_cache.lock().unwrap().get(&name_lower) {
+        if let Ok(img) = slint::Image::load_from_path(path) {
+            LOCAL_IMAGE_CACHE.with(|c| c.borrow_mut().insert(name_lower, img.clone()));
+            return img;
+        }
+    }
+
+    let cache_clone = Arc::clone(path_cache);
+    let name_clone = name_lower.clone();
+    rayon::spawn(move || {
+        if let Some(ico_path) = find_icon(&name_clone, 256) {
+            cache_clone.lock().unwrap().insert(name_clone, ico_path);
+        }
+    });
+
+    FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
     let home = std::env::var("HOME").expect("HOME environment variable must be set");
@@ -91,10 +120,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
 
     let pending = std::cell::RefCell::new(Vec::<(String, String, String)>::new());
-    let item_count: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
-    let icon_batch_size = 20;
-    let icons_loaded: std::cell::RefCell<usize> = std::cell::RefCell::new(0);
-
+    
     #[allow(clippy::arc_with_non_send_sync)]
     let timer = std::sync::Arc::new(std::sync::Mutex::new(slint::Timer::default()));
     let timer_clone = timer.clone();
@@ -102,57 +128,21 @@ fn main() -> Result<(), Box<dyn Error>> {
         while let Ok(item) = rx.try_recv() {
             pending.borrow_mut().push(item.clone());
             MASTER_LIST.with(|m| {
-                m.borrow_mut().push(ActionItem {
-                    name: item.0.clone().into(),
-                    exec: item.1.clone().into(),
-                    keywords: item.2.clone().into(),
-                    icon: Default::default(),
-                });
+                m.borrow_mut().push((
+                    item.0.clone().into(),
+                    item.1.clone().into(),
+                    item.2.clone().into(),
+                ));
             });
         }
 
         if !pending.borrow().is_empty() {
             let batch: Vec<(String, String, String)> = pending.borrow_mut().drain(..).collect();
-            let batch_len = batch.len();
-            
-            let loaded = *icons_loaded.borrow();
-            let batch = if loaded < icon_batch_size && batch_len > 0 {
-                let priorities: Vec<u32> = batch.iter()
-                    .map(|(_, exec, _)| {
-                        USAGE_CACHE.get().map(|c| c.lock().unwrap().get_priority(exec)).unwrap_or(0)
-                    })
-                    .collect();
-                let mut indices: Vec<usize> = (0..batch_len).collect();
-                indices.sort_by(|&a, &b| priorities[b].cmp(&priorities[a]));
-                indices.into_iter()
-                    .map(|i| batch[i].clone())
-                    .collect()
-            } else {
-                batch
-            };
-
-            *item_count.borrow_mut() += batch_len;
             
             let items: Vec<ActionItem> = batch
                 .into_iter()
-                .enumerate()
-                .map(|(i, (name, exec, keywords))| {
-                    let _global_idx = *item_count.borrow() - batch_len + i;
-                    let loaded = *icons_loaded.borrow();
-                    
-                    let icon = if loaded < icon_batch_size {
-                        *icons_loaded.borrow_mut() += 1;
-                        if let Some(ico_path) = find_icon(&name.to_lowercase(), 256) {
-                            slint::Image::load_from_path(&ico_path).unwrap_or_else(|_| {
-                                FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
-                            })
-                        } else {
-                            FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
-                        }
-                    } else {
-                        Default::default()
-                    };
-                    
+                .map(|(name, exec, keywords)| {
+                    let icon = get_icon(&name);
                     ActionItem {
                         name: name.into(),
                         exec: exec.into(),
@@ -193,12 +183,25 @@ fn main() -> Result<(), Box<dyn Error>> {
             UI_ACTIONS.with(|a| {
                 if let Some(ui_actions) = a.borrow().as_ref() {
                     MASTER_LIST.with(|m| {
-                        let mut items: Vec<ActionItem> = m.borrow().clone().into_iter().collect();
+                        let master_list = m.borrow();
+                        let cache = USAGE_CACHE.get();
+                        
+                        let mut items: Vec<ActionItem> = master_list.iter()
+                            .map(|(name, exec, keywords)| {
+                                ActionItem {
+                                    name: name.clone(),
+                                    exec: exec.clone(),
+                                    keywords: keywords.clone(),
+                                    icon: get_icon(name),
+                                }
+                            })
+                            .collect();
+
                         items.sort_by(|a, b| {
-                            let priority_a = USAGE_CACHE.get()
+                            let priority_a = cache
                                 .map(|c| c.lock().unwrap().get_priority(&a.exec))
                                 .unwrap_or(0);
-                            let priority_b = USAGE_CACHE.get()
+                            let priority_b = cache
                                 .map(|c| c.lock().unwrap().get_priority(&b.exec))
                                 .unwrap_or(0);
                             priority_b.cmp(&priority_a)
@@ -231,55 +234,47 @@ fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 MASTER_LIST.with(|m| {
                     let master_list = m.borrow();
-                    let mut filtered: Vec<(i64, u32, ActionItem)> = master_list
-                        .iter()
-                        .filter_map(|item| {
+                    let priorities: Vec<u32> = if let Some(cache) = USAGE_CACHE.get() {
+                        let lock = cache.lock().unwrap();
+                        master_list.iter()
+                            .map(|(_, exec, _)| lock.get_priority(exec))
+                            .collect()
+                    } else {
+                        vec![0; master_list.len()]
+                    };
+
+                    let query_str = query.to_string();
+                    
+                    let mut filtered: Vec<(i64, u32, usize)> = master_list
+                        .as_slice()
+                        .par_iter()
+                        .enumerate()
+                        .filter_map(|(idx, (name, exec, keywords))| {
                             let score = matcher
-                                .fuzzy_match(&item.name, &text)
-                                .or_else(|| matcher.fuzzy_match(&item.keywords, &text))
-                                .or_else(|| matcher.fuzzy_match(&item.exec, &text));
+                                .fuzzy_match(name, &query_str)
+                                .or_else(|| matcher.fuzzy_match(keywords, &query_str))
+                                .or_else(|| matcher.fuzzy_match(exec, &query_str));
 
-                            let priority = USAGE_CACHE.get()
-                                .map(|c| c.lock().unwrap().get_priority(&item.exec))
-                                .unwrap_or(0);
+                            let priority = priorities[idx];
 
-                            score.map(|s| (s, priority, item.clone()))
+                            score.map(|s| (s, priority, idx))
                         })
                         .collect();
 
-                    filtered.sort_by(|(score_a, priority_a, _), (score_b, priority_b, _)| {
-                        if priority_a != priority_b {
-                            priority_b.cmp(priority_a)
-                        } else {
-                            score_b.cmp(score_a)
-                        }
+                    filtered.sort_by(|(score_a, priority_a, _), (score_b, priority_b, _): &(i64, u32, usize)| {
+                        priority_b.cmp(priority_a).then_with(|| score_b.cmp(score_a))
                     });
 
                     let new_model: Vec<ActionItem> = filtered
                         .into_iter()
-                        .enumerate()
-                        .map(|(i, (_, _, item))| {
-                            let icon = if !item.icon.size().is_empty() {
-                                item.icon.clone()
-                            } else if i < 5 {
-                                if let Some(ico_path) =
-                                    find_icon(&item.name.as_str().to_lowercase(), 256)
-                                {
-                                    slint::Image::load_from_path(&ico_path).unwrap_or_else(|_| {
-                                        FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
-                                    })
-                                } else {
-                                    FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
-                                }
-                            } else {
-                                FALLBACK_ICON.with(|f| f.borrow().clone()).unwrap_or_default()
-                            };
-
+                        .take(100)
+                        .map(|(_, _, idx)| {
+                            let (name, exec, keywords) = &master_list[idx];
                             ActionItem {
-                                name: item.name,
-                                exec: item.exec,
-                                keywords: item.keywords,
-                                icon,
+                                name: name.clone(),
+                                exec: exec.clone(),
+                                keywords: keywords.clone(),
+                                icon: get_icon(name),
                             }
                         })
                         .collect();

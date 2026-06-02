@@ -6,8 +6,11 @@ use std::env;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
+
+static RE_EXEC: OnceLock<Regex> = OnceLock::new();
+static RE_XDG: OnceLock<Regex> = OnceLock::new();
 
 pub fn get_programs_raw_streaming<F>(on_item: F)
 where
@@ -28,6 +31,7 @@ where
         "/usr/share/plasma".to_string(),
         "/usr/share/kde5".to_string(),
         "/usr/share/kde6".to_string(),
+        "/usr/share/plasma".to_string(),
         "/usr/share/plasma5".to_string(),
         "/usr/share/plasma6".to_string(),
         "/opt/share".to_string(),
@@ -47,7 +51,7 @@ where
 
     let start = Instant::now();
 
-    let all_app_dirs: Vec<_> = clean_dirs
+    clean_dirs
         .iter()
         .filter_map(|dir| {
             let path = format!("{}/applications", dir);
@@ -56,10 +60,7 @@ where
         .flatten()
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())
-        .collect();
-
-    all_app_dirs
-        .into_par_iter()
+        .par_bridge()
         .filter_map(|path| {
             fs::metadata(&path)
                 .ok()
@@ -114,11 +115,12 @@ fn get_desktop_data_raw(path: &Path) -> Result<(String, String, String), Box<dyn
 }
 
 fn strip_field_codes_regex(exec: &str) -> String {
-    let re_exec = Regex::new(r"@@.*@@").unwrap();
+    let re_exec = RE_EXEC.get_or_init(|| Regex::new(r"@@.*@@").unwrap());
     let result = re_exec.replace_all(exec, "");
 
-    let re_xdg = Regex::new(r"%[fFuUdDnNickvm]").unwrap();
+    let re_xdg = RE_XDG.get_or_init(|| Regex::new(r"%[fFuUdDnNickvm]").unwrap());
     let result = re_xdg.replace_all(&result, "");
 
     result.split_whitespace().collect::<Vec<_>>().join(" ")
 }
+
