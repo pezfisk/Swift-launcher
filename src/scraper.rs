@@ -64,22 +64,19 @@ where
             fs::metadata(&path)
                 .ok()
                 .filter(|meta| meta.is_file())
-                .and_then(|_| get_desktop_data_raw(&path).ok())
+                .and_then(|_| {
+                    get_desktop_data_raw(&path)
+                        .ok()
+                        .map(|item| (path.clone(), item))
+                })
         })
-        .for_each(|item| {
-            let exec_key = item
-                .1
-                .split_whitespace()
-                .next()
-                .unwrap_or("")
-                .to_lowercase();
-            if !exec_key.is_empty() {
-                let mut seen = seen.lock().unwrap();
-                if seen.insert(exec_key)
-                    && let Ok(mut cb) = on_item.lock() {
-                        cb(item);
-                    }
-            }
+        .for_each(|(path, item)| {
+            let path_key = path.to_string_lossy().to_lowercase();
+            let mut seen = seen.lock().unwrap();
+            if seen.insert(path_key)
+                && let Ok(mut cb) = on_item.lock() {
+                    cb(item);
+                }
         });
 
     println!(
