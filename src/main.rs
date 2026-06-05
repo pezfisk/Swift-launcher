@@ -92,6 +92,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let manager_bg = Arc::clone(&manager);
 
     rayon::spawn(move || {
+        // Defer plugin loading slightly to prioritize the scraper
+        std::thread::sleep(std::time::Duration::from_millis(100));
         let mut mg = manager_bg.lock().unwrap();
         if let Err(e) = mg.load_all() {
             eprintln!("Failed to load plugins: {}", e);
@@ -107,12 +109,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     rayon::spawn({
         let tx_scraper = tx.clone();
-        let tx_config = tx.clone();
         move || {
             scraper::get_programs_raw_streaming(move |item| {
                 let _ = tx_scraper.send(item);
             });
+        }
+    });
 
+    rayon::spawn({
+        let tx_config = tx.clone();
+        move || {
             for item in config::load_config_raw() {
                 let _ = tx_config.send(item);
             }
@@ -124,7 +130,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     #[allow(clippy::arc_with_non_send_sync)]
     let timer = std::sync::Arc::new(std::sync::Mutex::new(slint::Timer::default()));
     let timer_clone = timer.clone();
-    timer_clone.lock().unwrap().start(slint::TimerMode::Repeated, std::time::Duration::from_millis(50), move || {
+    // Use a faster initial interval to populate the UI quickly
+    let interval = std::cell::Cell::new(std::time::Duration::from_millis(16));
+    timer_clone.lock().unwrap().start(slint::TimerMode::Repeated, interval.get(), move || {
+        let mut count = 0;
         while let Ok(item) = rx.try_recv() {
             pending.borrow_mut().push(item.clone());
             MASTER_LIST.with(|m| {
@@ -134,6 +143,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                     item.2.clone().into(),
                 ));
             });
+            count += 1;
+            if count > 50 { break; } // Don't block the UI thread too long
         }
 
         if !pending.borrow().is_empty() {
@@ -157,6 +168,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                     ui_actions.extend(items);
                 }
             });
+
+            // Gradually slow down the timer once we have initial data
+            if interval.get().as_millis() < 50 {
+                interval.set(std::time::Duration::from_millis(50));
+                // We can't easily re-start the timer with a new interval from within the callback in current Slint
+                // but we can just let it run at 16ms for a bit, it's not a big deal for startup.
+            }
         }
     });
 

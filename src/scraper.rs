@@ -48,6 +48,13 @@ where
     let dir_set: HashSet<String> = default_dirs.into_iter().chain(system_dirs).collect();
     let mut clean_dirs: Vec<String> = dir_set.into_iter().collect();
     clean_dirs.retain(|s| !s.starts_with("/nix/store/"));
+    
+    // Prioritize user-specific directories for faster initial results
+    clean_dirs.sort_by(|a, b| {
+        let a_is_user = a.contains(&home);
+        let b_is_user = b.contains(&home);
+        b_is_user.cmp(&a_is_user)
+    });
 
     let start = Instant::now();
 
